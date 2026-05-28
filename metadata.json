@@ -1,0 +1,6 @@
+{
+  "name": "InterviewCoach",
+  "description": "An AI-powered interview coaching platform that analyzes your mock interview answers and provides detailed performance feedback.",
+  "requestFramePermissions": ["camera", "microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
