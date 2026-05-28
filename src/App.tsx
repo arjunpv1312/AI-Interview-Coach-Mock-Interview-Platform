@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ViewState, User, InterviewSession } from './types';
 import { mockQuestions } from './data';
 import { DashboardView } from './components/DashboardView';
@@ -11,13 +11,26 @@ import { LiveInterviewView } from './components/LiveInterviewView';
 import { ResultsView } from './components/ResultsView';
 import { QuestionBankView } from './components/QuestionBankView';
 import { AuthView } from './components/AuthView';
-import { UserCircle, LogOut, Globe, FileText } from 'lucide-react';
+import { UserCircle, LogOut, Globe, FileText, Sun, Moon } from 'lucide-react';
 
 export default function App() {
   const [view, setView] = useState<ViewState>('auth');
   const [user, setUser] = useState<User | null>(null);
   const [sessionParams, setSessionParams] = useState<any>(null);
   const [currentSession, setCurrentSession] = useState<InterviewSession | null>(null);
+  const [isLightMode, setIsLightMode] = useState(() => {
+    return localStorage.getItem('theme') === 'light';
+  });
+
+  useEffect(() => {
+    if (isLightMode) {
+      document.documentElement.classList.add('light');
+      localStorage.setItem('theme', 'light');
+    } else {
+      document.documentElement.classList.remove('light');
+      localStorage.setItem('theme', 'dark');
+    }
+  }, [isLightMode]);
 
   React.useEffect(() => {
     const authDataStr = localStorage.getItem('authData');
@@ -68,22 +81,32 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-slate-100 font-sans selection:bg-blue-500/30">
+    <div className="min-h-screen bg-slate-950 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100 font-sans selection:bg-blue-500/30">
       
       {/* Navigation */}
       {(view !== 'live' && view !== 'auth') && (
-        <nav className="border-b border-slate-800 bg-slate-950/50 backdrop-blur-lg sticky top-0 z-50">
+        <nav className="border-b border-slate-800 bg-slate-950/50 backdrop-blur-lg sticky top-0 z-50 transition-colors">
           <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
             <div className="flex items-center gap-3 cursor-pointer" onClick={() => setView('dashboard')}>
-              <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center font-bold text-white shadow-lg shadow-blue-500/20">
-                AI
+              <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center font-bold text-slate-100 shadow-lg shadow-blue-500/20 overflow-hidden">
+                <img src="/src/assets/images/interview_copilot_logo_v2_1779985371209.png" alt="Interview Copilot" className="w-full h-full object-cover" />
               </div>
-              <span className="font-bold text-lg tracking-tight">InterviewCoach</span>
+              <span className="font-bold text-lg tracking-tight">Interview Copilot</span>
             </div>
             
             <div className="flex items-center gap-6">
-              <button onClick={() => setView('dashboard')} className={`text-sm font-medium transition-colors ${view === 'dashboard' ? 'text-blue-400' : 'text-slate-400 hover:text-white'}`}>Dashboard</button>
-              <button onClick={() => setView('bank')} className={`text-sm font-medium transition-colors ${view === 'bank' ? 'text-blue-400' : 'text-slate-400 hover:text-white'}`}>Question Bank</button>
+              <button 
+                onClick={() => setIsLightMode(!isLightMode)} 
+                className="p-2 text-slate-400 hover:text-slate-100 rounded-lg hover:bg-slate-800 transition-colors"
+                title={isLightMode ? "Switch to Dark Mode" : "Switch to Light Mode"}
+              >
+                {isLightMode ? <Moon size={18} /> : <Sun size={18} />}
+              </button>
+              
+              <div className="h-6 w-px bg-slate-800 mx-2"></div>
+
+              <button onClick={() => setView('dashboard')} className={`text-sm font-medium transition-colors ${view === 'dashboard' ? 'text-blue-400' : 'text-slate-400 hover:text-slate-100'}`}>Dashboard</button>
+              <button onClick={() => setView('bank')} className={`text-sm font-medium transition-colors ${view === 'bank' ? 'text-blue-400' : 'text-slate-400 hover:text-slate-100'}`}>Question Bank</button>
               
               <div className="h-6 w-px bg-slate-800 mx-2"></div>
               
@@ -94,7 +117,7 @@ export default function App() {
                   localStorage.removeItem('authData');
                   setUser(null); 
                   setView('auth'); 
-                }} className="ml-4 p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors" title="Log Out">
+                }} className="ml-4 p-2 text-slate-400 hover:text-slate-100 rounded-lg hover:bg-slate-800 transition-colors" title="Log Out">
                   <LogOut size={18} />
                 </button>
               </div>

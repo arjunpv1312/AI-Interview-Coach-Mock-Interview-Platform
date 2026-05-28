@@ -46,10 +46,13 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
 
   const getSelectedVoice = () => {
     const voices = window.speechSynthesis.getVoices();
-    return voices.find(v => v.name.includes('Google US English')) 
-        || voices.find(v => v.lang.startsWith('en') && (v.name.includes('Premium') || v.name.includes('Samantha')))
-        || voices.find(v => v.lang.startsWith('en'))
-        || voices[0];
+    return voices.find(v => v.name.includes('Microsoft David')) ||
+           voices.find(v => v.name.includes('Microsoft Mark')) ||
+           voices.find(v => v.name.includes('Google US English')) ||
+           voices.find(v => v.lang.startsWith('en') && (v.name.includes('Premium') || v.name.includes('Natural') || v.name.includes('Neural'))) ||
+           voices.find(v => v.lang.startsWith('en-US')) ||
+           voices.find(v => v.lang.startsWith('en')) ||
+           voices[0];
   };
 
   const speakText = (text: string) => {
@@ -58,7 +61,7 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
         const utterance = new SpeechSynthesisUtterance(text);
         const voice = getSelectedVoice();
         if (voice) utterance.voice = voice;
-        utterance.rate = 1.05;
+        utterance.rate = 1.0;
         utterance.pitch = 1.0;
         window.speechSynthesis.speak(utterance);
     }, 50);
@@ -310,8 +313,8 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
              </div>
 
              <div className="z-10 flex flex-col items-center text-center w-full">
-                <div className="w-32 h-32 mb-6 rounded-3xl bg-slate-800 border border-slate-700/50 p-2 shadow-2xl relative">
-                   <img src="/src/assets/images/tutor_logo_1779982364511.png" alt="Tutor Mascot" className="w-full h-full object-cover rounded-xl" />
+                <div className="w-32 h-32 mb-6 rounded-3xl bg-slate-800 border border-slate-700/50 flex items-center justify-center p-2 shadow-2xl relative shadow-blue-500/20 text-slate-100 font-bold text-5xl overflow-hidden">
+                   <img src="/src/assets/images/interview_copilot_logo_v2_1779985371209.png" alt="Interview Copilot Mascot" className="w-full h-full object-cover rounded-2xl" />
                    
                    {!isThinking && !isMicOn && (
                        <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full bg-blue-500 border-4 border-slate-900 flex items-center justify-center animate-pulse">

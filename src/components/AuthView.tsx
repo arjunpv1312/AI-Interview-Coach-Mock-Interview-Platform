@@ -72,10 +72,10 @@ export function AuthView({ onLogin }: AuthViewProps) {
       <div className="max-w-md w-full bg-slate-900 border border-slate-700/50 rounded-2xl p-8 shadow-2xl animate-in zoom-in-95 duration-500">
         
         <div className="flex flex-col items-center mb-8">
-          <div className="w-20 h-20 bg-slate-800 rounded-2xl flex items-center justify-center mb-4 shadow-xl border border-slate-700 overflow-hidden">
-             <img src="/src/assets/images/tutor_logo_1779982364511.png" alt="Tutor Logo" className="w-full h-full object-cover" />
+          <div className="w-20 h-20 bg-slate-800 rounded-2xl flex items-center justify-center mb-4 shadow-xl shadow-blue-500/20 text-white font-bold text-2xl border border-slate-700 overflow-hidden">
+             <img src="/src/assets/images/interview_copilot_logo_v2_1779985371209.png" alt="Interview Copilot" className="w-full h-full object-cover" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">InterviewCoach</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-white">Interview Copilot</h1>
           <p className="text-slate-400 mt-2 text-center text-sm">
             {isLogin ? 'Sign in to track your interview performance.' : 'Create an account to start practicing.'}
           </p>

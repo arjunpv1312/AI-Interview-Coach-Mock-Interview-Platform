@@ -18,8 +18,8 @@ export function DashboardView({ user, onNavigate }: DashboardViewProps) {
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 pb-4">
         <div className="flex items-center gap-6">
-          <div className="w-24 h-24 rounded-2xl bg-white/5 p-2 border border-slate-700/50 shadow-xl overflow-hidden shrink-0 flex items-center justify-center">
-             <img src="/src/assets/images/tutor_logo_1779982364511.png" alt="Tutor Logo" className="w-full h-full object-cover rounded-xl" />
+          <div className="w-24 h-24 rounded-2xl bg-slate-800 border border-slate-700/50 shadow-xl overflow-hidden shrink-0 flex items-center justify-center shadow-blue-500/20">
+             <img src="/src/assets/images/interview_copilot_logo_v2_1779985371209.png" alt="Interview Copilot" className="w-full h-full object-cover" />
           </div>
           <div>
             <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
