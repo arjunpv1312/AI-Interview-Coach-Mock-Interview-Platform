@@ -4,6 +4,7 @@ import { PlayCircle, History, BookOpen, Video, Target, Clock, Building } from 'l
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
 } from 'recharts';
+import { GoogleMeetIntegration } from './GoogleMeetIntegration';
 
 interface DashboardViewProps {
   user: User;
@@ -74,9 +75,13 @@ export function DashboardView({ user, onNavigate }: DashboardViewProps) {
           </div>
         </div>
 
-        {/* Quick Actions */}
-        <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-xl p-6 flex flex-col gap-4">
-          <h2 className="text-lg font-semibold text-white mb-2">Quick Actions</h2>
+        {/* Actions & Meet */}
+        <div className="flex flex-col gap-6">
+            <GoogleMeetIntegration />
+
+            {/* Quick Actions */}
+            <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-xl p-6 flex flex-col gap-4">
+              <h2 className="text-lg font-semibold text-white mb-2">Quick Actions</h2>
           
           <button 
             onClick={() => onNavigate('setup')}
@@ -117,6 +122,7 @@ export function DashboardView({ user, onNavigate }: DashboardViewProps) {
             </div>
           </button>
           
+        </div>
         </div>
       </div>
     </div>

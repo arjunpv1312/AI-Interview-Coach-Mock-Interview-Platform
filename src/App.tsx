@@ -11,7 +11,7 @@ import { LiveInterviewView } from './components/LiveInterviewView';
 import { ResultsView } from './components/ResultsView';
 import { QuestionBankView } from './components/QuestionBankView';
 import { AuthView } from './components/AuthView';
-import { UserCircle, LogOut } from 'lucide-react';
+import { UserCircle, LogOut, Globe, FileText } from 'lucide-react';
 
 export default function App() {
   const [view, setView] = useState<ViewState>('auth');
@@ -156,6 +156,52 @@ export default function App() {
         )}
         {view === 'bank' && <QuestionBankView onNavigate={setView} />}
       </main>
+      
+      {/* Elegantly styled Footer / Contact links */}
+      <footer className="w-full mt-auto py-10 border-t border-slate-800/80 bg-gradient-to-b from-transparent to-slate-950 text-center text-slate-400">
+        <div className="flex flex-col items-center justify-center space-y-6">
+          <div className="flex items-center gap-6">
+            <a 
+               href="https://www.linkedin.com/in/arjun-pv1312" 
+               target="_blank" 
+               rel="noopener noreferrer" 
+               className="p-3 bg-slate-800/50 hover:bg-[#0A66C2] hover:text-white rounded-full transition-all duration-300 shadow-lg group border border-slate-700/50 hover:border-transparent"
+               aria-label="LinkedIn"
+            >
+               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 group-hover:scale-110 transition-transform">
+                 <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+               </svg>
+            </a>
+            
+            <a 
+               href="https://personal-portfolio--serenayt06.replit.app" 
+               target="_blank" 
+               rel="noopener noreferrer" 
+               className="p-3 bg-slate-800/50 hover:bg-emerald-600 hover:text-white rounded-full transition-all duration-300 shadow-lg group border border-slate-700/50 hover:border-transparent"
+               aria-label="Portfolio"
+               title="Portfolio"
+            >
+               <Globe className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            </a>
+
+            <a 
+               href="https://ais-pre-dy4l4r6gvgehsxaprdkgra-893539578143.asia-southeast1.run.app/" 
+               target="_blank" 
+               rel="noopener noreferrer" 
+               className="p-3 bg-slate-800/50 hover:bg-amber-600 hover:text-white rounded-full transition-all duration-300 shadow-lg group border border-slate-700/50 hover:border-transparent"
+               aria-label="AI Resume Analyzer"
+               title="AI Resume Analyzer"
+            >
+               <FileText className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            </a>
+          </div>
+          
+          <div className="flex flex-col items-center">
+            <span className="text-sm font-semibold tracking-wide text-slate-300">Created by Arjun PV</span>
+            <span className="text-xs text-slate-500 mt-1">Elevating the interview experience.</span>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

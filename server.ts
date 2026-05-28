@@ -66,10 +66,10 @@ Conversation so far:
 Evaluate the candidate thoroughly based on the conversation.
 You MUST return ONLY a raw JSON object with the following fields: 
 - crackProbability: string (Must be exactly one of: "Highly Likely", "Possible", "Needs Work")
-- overallSummary: string (A solid 2-3 sentence overview of their performance)
+- overallSummary: string (A solid 2-3 sentence overview of their performance. Explicitly state whether they have a well-founded chance to clear the interview or crack the job/internship offer based on this evaluation.)
 - speakingSkills: string (Evaluate their communication, tone, and clarity)
 - technicalSkills: string (Evaluate the accuracy, depth, and problem-solving skills)
-- deepDive: string (A very comprehensive, multi-paragraph deep-dive analysis addressing specific strengths, weaknesses, and nuances from the candidate's answers)
+- deepDive: string (A very comprehensive, multi-paragraph deep-dive analysis summarizing specific topics discussed, strengths, weaknesses, and nuances from the candidate's answers)
 - improvements: array of strings (List 3-5 specific, actionable areas they need to improve on)
 
 Transcript:

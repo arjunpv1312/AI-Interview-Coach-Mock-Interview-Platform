@@ -11,8 +11,14 @@ interface LiveInterviewViewProps {
 
 export function LiveInterviewView({ config, onComplete, onCancel }: LiveInterviewViewProps) {
   const [history, setHistory] = useState<ChatMessage[]>([]);
-  const [timeLeft, setTimeLeft] = useState(1800); // 30 mins total time
-  const [isRecording, setIsRecording] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(() => {
+    switch (config.difficulty) {
+      case 'Easy': return 15 * 60;
+      case 'Hard': return 45 * 60;
+      case 'Medium':
+      default: return 30 * 60;
+    }
+  });
   const [answerText, setAnswerText] = useState('');
   const [isThinking, setIsThinking] = useState(true);
   const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
@@ -102,6 +108,34 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
     }
   }, []); // Run once on mount
 
+  const [isMicOn, setIsMicOn] = useState(false);
+  const isMicOnRef = useRef(false);
+  const isThinkingRef = useRef(true);
+  const answerTextRef = useRef('');
+  const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    isMicOnRef.current = isMicOn;
+    isThinkingRef.current = isThinking;
+    answerTextRef.current = answerText;
+  }, [isMicOn, isThinking, answerText]);
+
+  // Silence detection for auto-submit
+  useEffect(() => {
+    if (isMicOn && answerText.trim() && !isThinking) {
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = setTimeout(() => {
+         // Auto submit when user gives > 3 seconds of silence and mic is ON
+         if (!isThinkingRef.current && answerTextRef.current.trim().length > 5) { // Ensure they actually said something substantial
+             handleSubmit();
+         }
+      }, 3500);
+    }
+    return () => {
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+    }
+  }, [answerText, isMicOn, isThinking]);
+
   // Initialize Speech Recognition
   useEffect(() => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -111,22 +145,38 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
       recognitionRef.current.interimResults = true;
       
       recognitionRef.current.onresult = (event: any) => {
+        if (window.speechSynthesis.speaking) {
+            window.speechSynthesis.cancel(); // User interrupted the AI
+        }
+
         let currentTranscript = '';
         for (let i = 0; i < event.results.length; i++) {
           currentTranscript += event.results[i][0].transcript;
         }
         setAnswerText(currentTranscript);
       };
+
+      recognitionRef.current.onend = () => {
+         // Keep it alive if mic is deliberately on and we are not thinking
+         if (isMicOnRef.current && !isThinkingRef.current) {
+             try {
+                recognitionRef.current.start();
+             } catch(e) {}
+         }
+      };
       
       recognitionRef.current.onerror = (event: any) => {
         console.error("Speech recognition error", event.error);
-        setIsRecording(false);
+        if (event.error === 'not-allowed' || event.error === 'audio-capture') {
+            setIsMicOn(false);
+        }
       };
     }
     
     return () => {
       if (recognitionRef.current) {
         recognitionRef.current.stop();
+        recognitionRef.current.onend = null;
       }
       window.speechSynthesis.cancel();
     };
@@ -136,9 +186,11 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
     let timer: NodeJS.Timeout;
     if (timeLeft > 0) {
       timer = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
+    } else if (timeLeft === 0 && !isThinking) {
+        onComplete(history);
     }
     return () => clearInterval(timer);
-  }, [timeLeft]);
+  }, [timeLeft, isThinking, history, onComplete]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -150,9 +202,8 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
     const finalAnswer = textOveride || answerText;
     if (!finalAnswer.trim()) return;
 
-    if (isRecording) {
-       recognitionRef.current?.stop();
-       setIsRecording(false);
+    if (isMicOnRef.current) {
+       recognitionRef.current?.stop(); // will automatically resume if isMicOn is true after thinking
     }
 
     const currentMessage: ChatMessage = { role: 'candidate', text: finalAnswer };
@@ -262,7 +313,7 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
                 <div className="w-32 h-32 mb-6 rounded-3xl bg-slate-800 border border-slate-700/50 p-2 shadow-2xl relative">
                    <img src="/src/assets/images/tutor_logo_1779982364511.png" alt="Tutor Mascot" className="w-full h-full object-cover rounded-xl" />
                    
-                   {!isThinking && !isRecording && (
+                   {!isThinking && !isMicOn && (
                        <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full bg-blue-500 border-4 border-slate-900 flex items-center justify-center animate-pulse">
                           <Mic size={14} className="text-white" />
                        </div>
@@ -288,7 +339,7 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
                     
                     <button 
                       onClick={handleStuck}
-                      disabled={isThinking || isRecording}
+                      disabled={isThinking || isMicOn}
                       className="px-5 py-2.5 bg-amber-500/10 hover:bg-amber-500/20 disabled:opacity-50 text-amber-400 border border-amber-500/20 rounded-xl font-medium transition-colors flex items-center gap-2 shadow-lg"
                     >
                       <HelpCircle size={18} />
@@ -303,12 +354,13 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
         <div className="lg:w-[60%] bg-slate-900 border border-slate-700 rounded-2xl p-6 flex flex-col shadow-lg overflow-hidden relative">
           
           <div className="flex-1 bg-black rounded-xl overflow-hidden relative border border-slate-800 shadow-inner group min-h-[300px]">
+             {/* @ts-ignore */}
              <Webcam 
                 audio={false}
                 videoConstraints={selectedDeviceId ? { deviceId: selectedDeviceId, facingMode } : { facingMode }}
                 className="w-full h-full object-cover"
                 mirrored={facingMode === "user"}
-                onUserMediaError={(err) => console.error("Webcam Error: ", err)}
+                onUserMediaError={(err: any) => console.error("Webcam Error: ", err)}
              />
              <div className="absolute top-4 right-4 flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
                 {devices.length > 1 && (
@@ -343,7 +395,7 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
               </label>
               <textarea 
                 className="w-full h-24 bg-slate-800/50 border border-slate-700 rounded-xl p-4 text-white focus:ring-2 focus:ring-blue-500 resize-none font-medium text-lg leading-relaxed shadow-inner"
-                placeholder={isRecording ? "Listening to you speak..." : "Click 'Start Recording', speak your answer, then send..."}
+                placeholder={isMicOn ? "Listening to you speak (auto-submits when you stop)..." : "Turn on the mic or type your answer and send..."}
                 value={answerText}
                 onChange={(e) => setAnswerText(e.target.value)}
               />
@@ -352,45 +404,30 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
           <div className="mt-6 flex items-center justify-between">
             <button 
               onClick={() => {
-                if (!isRecording) {
-                  window.speechSynthesis.cancel(); // Stop AI speaking if user interrupts
-                  try {
-                    recognitionRef.current?.start();
-                  } catch (e) {
-                    // ignore
-                  }
-                  setIsRecording(true);
-                  setAnswerText('');
+                const newMicState = !isMicOn;
+                setIsMicOn(newMicState);
+                if (newMicState) {
+                   window.speechSynthesis.cancel();
+                   setAnswerText('');
+                   try { recognitionRef.current?.start(); } catch(e){}
                 } else {
-                  recognitionRef.current?.stop();
-                  setIsRecording(false);
-                  
-                  // Auto submit slightly after giving the recognition time to append final text
-                  setTimeout(() => {
-                    setAnswerText(currentText => {
-                       if (currentText.trim()) {
-                         submitCandidateInteraction(currentText);
-                         return '';
-                       }
-                       return currentText;
-                    });
-                  }, 500);
+                   recognitionRef.current?.stop();
                 }
               }}
               disabled={isThinking}
               className={`px-6 py-4 rounded-xl font-semibold flex items-center gap-3 transition-all shadow-lg ${
-                isRecording 
+                isMicOn 
                   ? 'bg-rose-500/10 text-rose-400 border border-rose-500/50 hover:bg-rose-500/20' 
-                  : 'bg-slate-800 text-white hover:bg-slate-700 border border-slate-700 disabled:opacity-50'
+                  : 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/50 hover:bg-emerald-600/30 disabled:opacity-50'
               }`}
             >
-              <div className={`w-3 h-3 rounded-full ${isRecording ? 'bg-rose-400 animate-pulse' : 'bg-slate-400'}`} />
-              {isRecording ? 'Stop & Reply' : 'Click to Speak'}
+              <div className={`w-3 h-3 rounded-full ${isMicOn ? 'bg-rose-400 animate-pulse' : 'bg-emerald-400'}`} />
+              {isMicOn ? 'Mic is ON (Listening)' : 'Turn Mic ON'}
             </button>
 
             <button 
               onClick={handleSubmit}
-              disabled={!answerText.trim() && !isRecording} // require some input
+              disabled={(!answerText.trim() && !isMicOn) || isThinking}
               className="px-8 py-4 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl flex items-center gap-3 transition-colors shadow-lg shadow-blue-600/20"
             >
               Send Draft
@@ -398,7 +435,6 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
             </button>
           </div>
         </div>
-
       </div>
     </div>
   );

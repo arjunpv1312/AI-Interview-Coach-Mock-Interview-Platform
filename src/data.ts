@@ -20,7 +20,7 @@ export const mockQuestions: Question[] = [
   { id: 'q15', text: 'Design the architecture of Netflix.', company: 'Netflix', role: 'Backend Developer', difficulty: 'Hard', category: 'System Design', timesAsked: 520 },
   { id: 'q16', text: 'What are solid principles?', company: 'Salesforce', role: 'Software Engineer', difficulty: 'Medium', category: 'Technical', timesAsked: 630 },
   { id: 'q17', text: 'Explain CI/CD pipelines.', company: 'Atlassian', role: 'DevOps Engineer', difficulty: 'Medium', category: 'Technical', timesAsked: 210 },
-  { id: 'q18', text: 'How do you prioritize the product roadmap?', company: 'Uber', role: 'Product Manager', difficulty: 'Hard', category: 'Product Sense', timesAsked: 120 },
+  { id: 'q18', text: 'How do you prioritize the product roadmap?', company: 'Uber', role: 'Product Manager', difficulty: 'Hard', category: 'Behavioural', timesAsked: 120 },
   { id: 'q19', text: 'Explain the Transformer architecture used in LLMs.', company: 'OpenAI', role: 'AI Engineer', difficulty: 'Hard', category: 'Technical', timesAsked: 140 },
   { id: 'q20', text: 'Describe a complex problem you solved systematically.', company: 'Tesla', role: 'Software Engineer', difficulty: 'Hard', category: 'Behavioural', timesAsked: 85 }
 ];
