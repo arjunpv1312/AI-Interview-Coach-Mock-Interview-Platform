@@ -66,6 +66,7 @@ Conversation so far:
       if (!apiKey) {
         return res.json({
           crackProbability: "Needs Work",
+          overallScore: 0,
           overallSummary: "We couldn't fully evaluate your performance because the Gemini API Key is missing.",
           speakingSkills: "Not enough data.",
           technicalSkills: "Not enough data.",
@@ -80,6 +81,7 @@ Conversation so far:
 Evaluate the candidate thoroughly based on the conversation.
 You MUST return ONLY a raw JSON object with the following fields: 
 - crackProbability: string (Must be exactly one of: "Highly Likely", "Possible", "Needs Work")
+- overallScore: number (A score from 0 to 100 representing their overall performance)
 - overallSummary: string (A solid 2-3 sentence overview of their performance. Explicitly state whether they have a well-founded chance to clear the interview or crack the job/internship offer based on this evaluation.)
 - speakingSkills: string (Evaluate their communication, tone, and clarity)
 - technicalSkills: string (Evaluate the accuracy, depth, and problem-solving skills)
@@ -102,6 +104,7 @@ Transcript:
       
       let parsedResponse = {
         crackProbability: "Needs Work",
+        overallScore: 0,
         overallSummary: "We couldn't fully evaluate your performance.",
         speakingSkills: "Not enough data.",
         technicalSkills: "Not enough data.",
@@ -126,6 +129,7 @@ Transcript:
       console.error('Error getting evaluation:', error);
       res.json({
         crackProbability: "Needs Work",
+        overallScore: 0,
         overallSummary: "We couldn't fully evaluate your performance due to a server error.",
         speakingSkills: "Not enough data.",
         technicalSkills: "Not enough data.",

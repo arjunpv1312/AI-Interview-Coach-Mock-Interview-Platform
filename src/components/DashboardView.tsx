@@ -1,9 +1,10 @@
 import React from 'react';
 import { User } from '../types';
-import { PlayCircle, History, BookOpen, Video, Target, Clock, Building } from 'lucide-react';
+import { PlayCircle, History, BookOpen, Video, Target, Clock, Building, FileText, ExternalLink } from 'lucide-react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
 } from 'recharts';
+import { Logo } from './Logo';
 
 interface DashboardViewProps {
   user: User;
@@ -11,6 +12,17 @@ interface DashboardViewProps {
 }
 
 export function DashboardView({ user, onNavigate }: DashboardViewProps) {
+  const formatTimeSpent = (seconds?: number) => {
+    if (!seconds) return "0m";
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    if (h > 0) {
+      if (m > 0) return `${h}h ${m}m`;
+      return `${h}h`;
+    }
+    return `${m}m`;
+  };
+
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500">
       
@@ -18,7 +30,7 @@ export function DashboardView({ user, onNavigate }: DashboardViewProps) {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 pb-4">
         <div className="flex items-center gap-6">
           <div className="w-24 h-24 rounded-2xl bg-slate-800 border border-slate-700/50 shadow-xl overflow-hidden shrink-0 flex items-center justify-center shadow-blue-500/20">
-             <img src="/src/assets/images/interview_copilot_logo_v2_1779985371209.png" alt="Interview Copilot" className="w-full h-full object-cover" />
+             <Logo />
           </div>
           <div>
             <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
@@ -42,7 +54,7 @@ export function DashboardView({ user, onNavigate }: DashboardViewProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard icon={<Video className="text-purple-400" />} title="Mock Interviews" value={user.totalInterviews.toString()} />
         <StatCard icon={<Target className="text-blue-400" />} title="Average Score" value={user.totalInterviews > 0 ? `${user.averageScore}%` : '-'} />
-        <StatCard icon={<Clock className="text-emerald-400" />} title="Hours Practiced" value={user.timeSpentSeconds ? `${(user.timeSpentSeconds / 3600).toFixed(1)}h` : "0h"} />
+        <StatCard icon={<Clock className="text-emerald-400" />} title="Time Practiced" value={formatTimeSpent(user.timeSpentSeconds)} />
         <StatCard icon={<Building className="text-amber-400" />} title="Companies" value={user.companiesInterviewed ? user.companiesInterviewed.length.toString() : "0"} />
       </div>
 
@@ -125,6 +137,24 @@ export function DashboardView({ user, onNavigate }: DashboardViewProps) {
               <div className="text-sm text-slate-400">Browse the question bank</div>
             </div>
           </button>
+          
+          <a 
+            href="https://ais-pre-dy4l4r6gvgehsxaprdkgra-893539578143.asia-southeast1.run.app/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-between p-4 rounded-xl border border-slate-700 bg-slate-800/50 hover:bg-slate-800 hover:border-blue-500/50 transition-all text-left group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-blue-500/20 text-blue-400 group-hover:scale-110 transition-transform">
+                <FileText size={24} />
+              </div>
+              <div>
+                <div className="font-medium text-slate-200">Resume ATS Checker</div>
+                <div className="text-sm text-slate-400">Analyze weaknesses & score</div>
+              </div>
+            </div>
+            <ExternalLink size={18} className="text-slate-500 group-hover:text-blue-400 transition-colors" />
+          </a>
           
         </div>
         </div>

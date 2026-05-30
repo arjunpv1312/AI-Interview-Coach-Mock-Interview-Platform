@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Webcam from 'react-webcam';
 import { ChatMessage } from '../types';
+import { Logo } from './Logo';
 import { Clock, Video, Mic, CheckCircle2, Building2, BrainCircuit, RefreshCcw, Camera, HelpCircle, Send } from 'lucide-react';
+import { motion } from 'motion/react';
 
 interface LiveInterviewViewProps {
   config: any;
@@ -76,24 +78,12 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
   const speakText = (text: string) => {
     window.speechSynthesis.cancel();
     
-    // Auto-stop mic while AI is speaking
-    if (isMicOnRef.current) {
-        try { recognitionRef.current?.stop(); } catch(e) {}
-    }
-
     setTimeout(() => {
         const utterance = new SpeechSynthesisUtterance(text);
         const voice = getSelectedVoice();
         if (voice) utterance.voice = voice;
         utterance.rate = 1.0;
         utterance.pitch = 1.0;
-        
-        utterance.onend = () => {
-            if (isMicOnRef.current && !isThinkingRef.current) {
-                try { recognitionRef.current?.start(); } catch(e) {}
-            }
-        };
-
         window.speechSynthesis.speak(utterance);
     }, 50);
   };
@@ -338,20 +328,34 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
           
           <div className="flex-1 bg-slate-900 border border-slate-700 rounded-2xl p-6 flex flex-col shadow-lg items-center justify-center relative overflow-hidden">
              
-             {/* Abstract wave background effect */}
-             <div className="absolute inset-0 opacity-10 pointer-events-none flex items-center justify-center">
-                 <div className={`w-64 h-64 rounded-full ${isThinking ? 'bg-purple-500' : 'bg-blue-500'} blur-3xl animate-pulse`}></div>
-             </div>
-
-             <div className="z-10 flex flex-col items-center text-center w-full">
-                <div className="w-32 h-32 mb-6 rounded-3xl bg-slate-800 border border-slate-700/50 flex items-center justify-center p-2 shadow-2xl relative shadow-blue-500/20 text-slate-100 font-bold text-5xl overflow-hidden">
-                   <img src="/src/assets/images/interview_copilot_logo_v2_1779985371209.png" alt="Interview Copilot Mascot" className="w-full h-full object-cover rounded-2xl" />
-                   
-                   {!isThinking && !isMicOn && (
-                       <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full bg-blue-500 border-4 border-slate-900 flex items-center justify-center animate-pulse">
-                          <Mic size={14} className="text-white" />
-                       </div>
-                   )}
+             <div className="z-10 flex flex-col items-center text-center w-full relative">
+                <div className="relative mb-6">
+                    <div className="w-32 h-32 rounded-[2rem] bg-slate-800 border-2 border-slate-700/80 flex items-center justify-center shadow-xl p-6 z-20 relative overflow-hidden">
+                        {isThinking ? (
+                            <div className="flex gap-2">
+                                <span className="w-3 h-3 bg-slate-500 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                                <span className="w-3 h-3 bg-slate-500 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                                <span className="w-3 h-3 bg-slate-500 rounded-full animate-bounce"></span>
+                            </div>
+                        ) : (
+                            <div className="flex gap-1.5 items-center justify-center h-full w-full">
+                                {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+                                    <motion.div 
+                                        key={i}
+                                        className="w-2 rounded-full bg-blue-400"
+                                        animate={{ height: ["20%", "80%", "40%", "100%", "30%"] }}
+                                        transition={{
+                                            duration: 1.5,
+                                            repeat: Infinity,
+                                            ease: "easeInOut",
+                                            delay: i * 0.1,
+                                            repeatType: "mirror"
+                                        }}
+                                    />
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
                 
                 <h3 className="text-xl font-bold text-white mb-2">

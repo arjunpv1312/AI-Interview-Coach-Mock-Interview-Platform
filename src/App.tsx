@@ -11,6 +11,7 @@ import { LiveInterviewView } from './components/LiveInterviewView';
 import { ResultsView } from './components/ResultsView';
 import { QuestionBankView } from './components/QuestionBankView';
 import { AuthView } from './components/AuthView';
+import { Logo } from './components/Logo';
 import { UserCircle, LogOut, Globe, FileText } from 'lucide-react';
 
 export default function App() {
@@ -77,12 +78,12 @@ export default function App() {
       {(view !== 'live' && view !== 'auth') && (
         <nav className="border-b border-slate-800 bg-slate-950/50 backdrop-blur-lg sticky top-0 z-50 transition-colors">
           <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-            <div className="flex items-center gap-3 cursor-pointer" onClick={() => setView('dashboard')}>
-              <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center font-bold text-slate-100 shadow-lg shadow-blue-500/20 overflow-hidden">
-                <img src="/src/assets/images/interview_copilot_logo_v2_1779985371209.png" alt="Interview Copilot" className="w-full h-full object-cover" />
-              </div>
-              <span className="font-bold text-lg tracking-tight">Interview Copilot</span>
-            </div>
+        <div className="flex items-center gap-3 cursor-pointer" onClick={() => setView('dashboard')}>
+          <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center font-bold text-slate-100 shadow-lg shadow-blue-500/20 overflow-hidden shrink-0">
+            <Logo />
+          </div>
+          <span className="font-bold text-lg tracking-tight">Interview Copilot</span>
+        </div>
             
             <div className="flex items-center gap-6">
               <button onClick={() => setView('dashboard')} className={`text-sm font-medium transition-colors ${view === 'dashboard' ? 'text-blue-400' : 'text-slate-400 hover:text-slate-100'}`}>Dashboard</button>
@@ -138,10 +139,12 @@ export default function App() {
                           
                           // Simple weighted average for the mock score assuming evaluating gives a score out of 100
                           // Actually, the AI Returns a probability. We can map "High" to 90, "Moderate" to 70, "Needs Work" to 40.
-                          let scoreNum = 50;
-                          if (score.crackProbability === 'High') scoreNum = 90;
-                          if (score.crackProbability === 'Moderate') scoreNum = 70;
-                          if (score.crackProbability === 'Needs Work') scoreNum = 40;
+                          let scoreNum = score.overallScore ?? 50;
+                          if (scoreNum === 50) {
+                              if (score.crackProbability === 'Highly Likely' || score.crackProbability === 'High') scoreNum = 90;
+                              if (score.crackProbability === 'Possible' || score.crackProbability === 'Moderate') scoreNum = 70;
+                              if (score.crackProbability === 'Needs Work') scoreNum = 40;
+                          }
 
                           const newAvg = Math.round((((dbUser.averageScore || 0) * (dbUser.totalInterviews || 0)) + scoreNum) / newTotal);
                           

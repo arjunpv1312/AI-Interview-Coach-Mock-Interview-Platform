@@ -1,6 +1,48 @@
 import React, { useEffect, useState } from 'react';
 import { InterviewSession } from '../types';
-import { Trophy, TrendingUp, RefreshCcw, Share2, Target, MessageCircle, Code2 } from 'lucide-react';
+import { Trophy, TrendingUp, RefreshCcw, Share2, Target, MessageCircle, Code2, Award } from 'lucide-react';
+import { motion, useMotionValue, useTransform, animate } from 'motion/react';
+
+function AnimatedScore({ score }: { score: number }) {
+  const count = useMotionValue(0);
+  const rounded = useTransform(count, Math.round);
+
+  useEffect(() => {
+    const animation = animate(count, score, { duration: 2, ease: "easeOut" });
+    return animation.stop;
+  }, [score]);
+
+  // Determine color based on score
+  const colorClass = 
+    score >= 80 ? 'text-emerald-400 drop-shadow-[0_0_15px_rgba(52,211,153,0.5)]' :
+    score >= 60 ? 'text-amber-400 drop-shadow-[0_0_15px_rgba(251,191,36,0.5)]' :
+    'text-rose-400 drop-shadow-[0_0_15px_rgba(244,63,94,0.5)]';
+
+  return (
+    <div className="flex flex-col items-center justify-center p-6 bg-slate-800/50 rounded-3xl border border-slate-700 w-48 h-48 mx-auto shadow-2xl relative overflow-hidden group">
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-slate-900/50" />
+        <div className="relative z-10 flex flex-col items-center justify-center gap-2 text-center">
+            <span className="text-sm font-semibold text-slate-400 uppercase tracking-widest">Overall Score</span>
+            <div className="flex items-baseline justify-center gap-1">
+                <motion.span className={`text-6xl font-black ${colorClass}`}>
+                    {rounded}
+                </motion.span>
+                <span className="text-xl font-bold text-slate-500">/ 100</span>
+            </div>
+            <Award className={`mt-2 ${colorClass.split(' ')[0]} opacity-70`} size={24} />
+        </div>
+        
+        {/* Animated border rings */}
+        <motion.div 
+            className="absolute inset-0 border-2 rounded-3xl"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: [0, 0.5, 0], scale: [0.8, 1.1, 1.2] }}
+            transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }}
+            style={{ borderColor: score >= 80 ? '#34d399' : score >= 60 ? '#fbbf24' : '#f43f5e' }}
+        />
+    </div>
+  );
+}
 
 interface ResultsViewProps {
   session: InterviewSession;
@@ -12,6 +54,7 @@ interface ResultsViewProps {
 export function ResultsView({ session, onRetake, onDashboard, onSaveScore }: ResultsViewProps) {
   const [loading, setLoading] = useState(true);
   const [evaluation, setEvaluation] = useState<any>(null);
+  const savedScoreRef = React.useRef(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -35,6 +78,7 @@ export function ResultsView({ session, onRetake, onDashboard, onSaveScore }: Res
             console.error("Failed to parse evaluation response", textResponse);
             data = {
                 crackProbability: "Needs Work",
+                overallScore: 0,
                 overallSummary: "We encountered a network error while connecting to the AI. Please try again.",
                 speakingSkills: "N/A",
                 technicalSkills: "N/A",
@@ -45,7 +89,8 @@ export function ResultsView({ session, onRetake, onDashboard, onSaveScore }: Res
         
         if (isMounted) {
             setEvaluation(data);
-            if (onSaveScore) {
+            if (onSaveScore && !savedScoreRef.current) {
+                savedScoreRef.current = true;
                 onSaveScore(data);
             }
         }
@@ -89,10 +134,15 @@ export function ResultsView({ session, onRetake, onDashboard, onSaveScore }: Res
             <Trophy size={48} className="text-blue-400" />
         </div>
         <div>
-            <h1 className="text-3xl lg:text-5xl font-extrabold text-white tracking-tight mb-4">
+            <h1 className="text-3xl lg:text-5xl font-extrabold text-white tracking-tight mb-8">
                 Interview <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">Verdict</span>
             </h1>
-            <div className={`mx-auto inline-flex items-center gap-2 px-6 py-2 rounded-full border text-lg font-bold shadow-lg ${crackColor}`}>
+            
+            <div className="flex flex-col md:flex-row items-center justify-center gap-8 mb-4">
+                <AnimatedScore score={evaluation.overallScore || 0} />
+            </div>
+
+            <div className={`mx-auto mt-6 inline-flex items-center gap-2 px-6 py-2 rounded-full border text-lg font-bold shadow-lg ${crackColor}`}>
                 Probability of Cracking: {evaluation.crackProbability}
             </div>
         </div>
