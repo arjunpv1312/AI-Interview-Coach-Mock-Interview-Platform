@@ -44,25 +44,56 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
     getDevices();
   }, []);
 
+  const selectedVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
+
   const getSelectedVoice = () => {
+    if (selectedVoiceRef.current) return selectedVoiceRef.current;
+    
     const voices = window.speechSynthesis.getVoices();
-    return voices.find(v => v.name.includes('Microsoft David')) ||
-           voices.find(v => v.name.includes('Microsoft Mark')) ||
-           voices.find(v => v.name.includes('Google US English')) ||
-           voices.find(v => v.lang.startsWith('en') && (v.name.includes('Premium') || v.name.includes('Natural') || v.name.includes('Neural'))) ||
-           voices.find(v => v.lang.startsWith('en-US')) ||
-           voices.find(v => v.lang.startsWith('en')) ||
-           voices[0];
+    const goodVoices = voices.filter(v => 
+      v.lang.startsWith('en') && 
+      (v.name.includes('Microsoft David') ||
+       v.name.includes('Microsoft Mark') ||
+       v.name.includes('Microsoft Zira') ||
+       v.name.includes('Google US English') ||
+       v.name.includes('Google UK English') ||
+       v.name.includes('Premium') ||
+       v.name.includes('Samantha') ||
+       v.name.includes('Natural') ||
+       v.name.includes('Neural'))
+    );
+    
+    if (goodVoices.length > 0) {
+      // Randomly pick one of the high-quality voices
+      const randomChoice = goodVoices[Math.floor(Math.random() * goodVoices.length)];
+      selectedVoiceRef.current = randomChoice;
+      return randomChoice;
+    }
+    
+    return voices.find(v => v.lang.startsWith('en')) || voices[0];
   };
 
   const speakText = (text: string) => {
     window.speechSynthesis.cancel();
+    
+    // Auto-stop mic while AI is speaking
+    if (isMicOnRef.current) {
+        try { recognitionRef.current?.stop(); } catch(e) {}
+    }
+
     setTimeout(() => {
         const utterance = new SpeechSynthesisUtterance(text);
         const voice = getSelectedVoice();
         if (voice) utterance.voice = voice;
         utterance.rate = 1.0;
         utterance.pitch = 1.0;
+        
+        utterance.onend = () => {
+            if (isMicOnRef.current && !isThinkingRef.current) {
+                try { recognitionRef.current?.start(); } catch(e) {}
+            }
+        };
+
         window.speechSynthesis.speak(utterance);
     }, 50);
   };
@@ -111,8 +142,8 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
     }
   }, []); // Run once on mount
 
-  const [isMicOn, setIsMicOn] = useState(false);
-  const isMicOnRef = useRef(false);
+  const [isMicOn, setIsMicOn] = useState(true);
+  const isMicOnRef = useRef(true);
   const isThinkingRef = useRef(true);
   const answerTextRef = useRef('');
   const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -128,11 +159,11 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
     if (isMicOn && answerText.trim() && !isThinking) {
       if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
       silenceTimerRef.current = setTimeout(() => {
-         // Auto submit when user gives > 3 seconds of silence and mic is ON
+         // Auto submit when user gives > 5 seconds of silence and mic is ON
          if (!isThinkingRef.current && answerTextRef.current.trim().length > 5) { // Ensure they actually said something substantial
              handleSubmit();
          }
-      }, 3500);
+      }, 5000);
     }
     return () => {
       if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
@@ -360,7 +391,7 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
              {/* @ts-ignore */}
              <Webcam 
                 audio={false}
-                videoConstraints={selectedDeviceId ? { deviceId: selectedDeviceId, facingMode } : { facingMode }}
+                videoConstraints={selectedDeviceId ? { deviceId: selectedDeviceId } : { facingMode: "user" }}
                 className="w-full h-full object-cover"
                 mirrored={facingMode === "user"}
                 onUserMediaError={(err: any) => console.error("Webcam Error: ", err)}
@@ -385,57 +416,50 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
                     title="Switch Camera (Front/Rear)"
                 >
                     <Camera size={18} />
-                    <span className="text-sm font-medium">Flip Input</span>
+                    <span className="text-sm font-medium">Flip</span>
                 </button>
              </div>
           </div>
 
-          {/* Transcript input */}
+          {/* Transcript input display */}
           <div className="mt-4">
               <label className="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-2 block flex items-center justify-between">
-                <span>Your Response (Speech Transcript)</span>
+                <span>Your Speech Transcript</span>
                 <span className="text-blue-400 normal-case">Turn {turnCount}</span>
               </label>
-              <textarea 
-                className="w-full h-24 bg-slate-800/50 border border-slate-700 rounded-xl p-4 text-white focus:ring-2 focus:ring-blue-500 resize-none font-medium text-lg leading-relaxed shadow-inner"
-                placeholder={isMicOn ? "Listening to you speak (auto-submits when you stop)..." : "Turn on the mic or type your answer and send..."}
-                value={answerText}
-                onChange={(e) => setAnswerText(e.target.value)}
-              />
+              <div 
+                className="w-full h-24 bg-slate-800/50 border border-slate-700 rounded-xl p-4 text-slate-300 font-medium text-lg leading-relaxed shadow-inner overflow-y-auto"
+              >
+                {answerText ? answerText : (
+                  <span className="text-slate-500 italic">
+                    {isThinking ? "Waiting for interviewer..." : isMicOn ? "Listening... (auto-submits 5s after you stop speaking)" : "Mic is off..."}
+                  </span>
+                )}
+              </div>
           </div>
 
-          <div className="mt-6 flex items-center justify-between">
-            <button 
-              onClick={() => {
-                const newMicState = !isMicOn;
-                setIsMicOn(newMicState);
-                if (newMicState) {
-                   window.speechSynthesis.cancel();
-                   setAnswerText('');
-                   try { recognitionRef.current?.start(); } catch(e){}
-                } else {
-                   recognitionRef.current?.stop();
-                }
-              }}
-              disabled={isThinking}
-              className={`px-6 py-4 rounded-xl font-semibold flex items-center gap-3 transition-all shadow-lg ${
-                isMicOn 
-                  ? 'bg-rose-500/10 text-rose-400 border border-rose-500/50 hover:bg-rose-500/20' 
-                  : 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/50 hover:bg-emerald-600/30 disabled:opacity-50'
-              }`}
-            >
-              <div className={`w-3 h-3 rounded-full ${isMicOn ? 'bg-rose-400 animate-pulse' : 'bg-emerald-400'}`} />
-              {isMicOn ? 'Mic is ON (Listening)' : 'Turn Mic ON'}
-            </button>
-
-            <button 
-              onClick={handleSubmit}
-              disabled={(!answerText.trim() && !isMicOn) || isThinking}
-              className="px-8 py-4 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl flex items-center gap-3 transition-colors shadow-lg shadow-blue-600/20"
-            >
-              Send Draft
-              <Send size={20} />
-            </button>
+          <div className="mt-4 flex items-center justify-between px-2">
+              {isThinking ? (
+                <div className="flex items-center gap-2 text-blue-400 font-medium">
+                  <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+                  Interviewer is thinking...
+                </div>
+              ) : isMicOn ? (
+                <div className="flex items-center gap-2 text-rose-400 font-medium">
+                  <div className="w-2 h-2 rounded-full bg-rose-400 animate-pulse" />
+                  Mic is ON (Listening)
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-slate-500 font-medium">
+                  <div className="w-2 h-2 rounded-full bg-slate-500" />
+                  Mic is OFF
+                </div>
+              )}
+              
+              <div className="text-sm font-medium text-slate-400 flex items-center gap-2">
+                 <span>Auto-submit in 5s</span>
+                 <RefreshCcw size={14} className={answerText.trim() ? "animate-spin text-blue-400" : ""} />
+              </div>
           </div>
         </div>
       </div>

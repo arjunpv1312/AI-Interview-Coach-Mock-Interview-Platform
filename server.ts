@@ -15,17 +15,20 @@ async function startServer() {
       const { company, role, history } = req.body;
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) {
-        return res.status(500).json({ error: 'GEMINI_API_KEY is missing' });
+        return res.json({ text: "I'm sorry, but I cannot assist you right now. The Gemini API Key is missing from your server configuration. Please add it to continue the interview." });
       }
 
       const ai = new GoogleGenAI({ apiKey });
       
-      let chatPrompt = `You are a professional technical interviewer for ${company} interviewing a candidate for a ${role} position. 
-Keep your responses conversational, realistic, and concise (1-3 sentences maximum). 
-If the user provides a good answer, acknowledge it briefly and ask the next question.
-If the user's answer is lacking, they are stuck, or they ask for help, give them a small hint or suggest an improvement, then ask them to try again.
-If they still cannot answer, simply move on to a different topic.
-Do NOT output any markdown formatting, just pure conversational text to be read using Text-to-Speech.
+      let chatPrompt = `You are a strict, highly technical interviewer at ${company} interviewing a candidate for the "${role}" position.
+Your responses must be spoken-word conversational and concise (1-3 sentences maximum).
+
+Crucial Instructions:
+1. FOCUS ON DEPTH: Ask practical, highly technical questions, including coding logic, system design, data structures, or deeply specialized aspects of the ${role} at ${company}. Don't ask generic questions.
+2. ADAPTIVE: If the candidate answers well, immediately pivot to a harder follow-up or a completely new complex technical topic.
+3. CONVERSATIONAL: Do not use markdown, lists, or asterisks (like *smiles*). Pure spoken text only.
+4. PROBE: If they give a superficial answer, ask them to explain the inner workings or edge cases. If they get stuck, give a tiny hint and push them to think.
+5. NO LONG SPEECHES: The user must do the talking. Keep your prompts short.
 
 Conversation so far:
 `;
@@ -35,7 +38,7 @@ Conversation so far:
            chatPrompt += `${msg.role === 'interviewer' ? 'Interviewer' : 'Candidate'}: ${msg.text}\n`;
         });
       } else {
-        chatPrompt += "(Start the interview by introducing yourself briefly as the AI interviewer and asking the first interview question.)\n";
+        chatPrompt += "(Start the interview by introducing yourself briefly as the AI interviewer and asking the first interview question regarding the role.)\n";
       }
       
       chatPrompt += `\nInterviewer:`;
@@ -45,10 +48,14 @@ Conversation so far:
         contents: chatPrompt,
       });
 
+      if (!response.text) {
+        throw new Error("Empty response from AI");
+      }
+
       res.json({ text: response.text });
     } catch (error) {
       console.error('Error getting interaction:', error);
-      res.status(500).json({ error: 'Failed to generate interviewer response' });
+      res.json({ text: "I'm having a technical issue processing that. Could you please answer the previous question again, or rephrase it?" });
     }
   });
 
@@ -57,7 +64,14 @@ Conversation so far:
       const { company, role, history } = req.body;
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) {
-        return res.status(500).json({ error: 'GEMINI_API_KEY is missing' });
+        return res.json({
+          crackProbability: "Needs Work",
+          overallSummary: "We couldn't fully evaluate your performance because the Gemini API Key is missing.",
+          speakingSkills: "Not enough data.",
+          technicalSkills: "Not enough data.",
+          deepDive: "Your server is missing the Gemini API Key. Please add it to your configuration.",
+          improvements: ["Add GEMINI_API_KEY to continue."]
+        });
       }
 
       const ai = new GoogleGenAI({ apiKey });
@@ -91,6 +105,7 @@ Transcript:
         overallSummary: "We couldn't fully evaluate your performance.",
         speakingSkills: "Not enough data.",
         technicalSkills: "Not enough data.",
+        deepDive: "There was a technical issue analyzing the interview data. Please try taking another interview.",
         improvements: ["Practice more interviews."]
       };
 
@@ -109,7 +124,14 @@ Transcript:
       res.json(parsedResponse);
     } catch (error) {
       console.error('Error getting evaluation:', error);
-      res.status(500).json({ error: 'Failed to generate evaluation' });
+      res.json({
+        crackProbability: "Needs Work",
+        overallSummary: "We couldn't fully evaluate your performance due to a server error.",
+        speakingSkills: "Not enough data.",
+        technicalSkills: "Not enough data.",
+        deepDive: "There was an unexpected error connecting to the AI system. We apologize for the inconvenience and recommend trying your interview again.",
+        improvements: ["Ensure stable network connection.", "Try another mock interview session."]
+      });
     }
   });
 

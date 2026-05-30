@@ -6,6 +6,8 @@ export interface User {
   totalInterviews: number;
   averageScore: number;
   scoreHistory?: number[];
+  timeSpentSeconds?: number;
+  companiesInterviewed?: string[];
 }
 
 export interface Question {

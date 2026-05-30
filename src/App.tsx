@@ -11,28 +11,18 @@ import { LiveInterviewView } from './components/LiveInterviewView';
 import { ResultsView } from './components/ResultsView';
 import { QuestionBankView } from './components/QuestionBankView';
 import { AuthView } from './components/AuthView';
-import { UserCircle, LogOut, Globe, FileText, Sun, Moon } from 'lucide-react';
+import { UserCircle, LogOut, Globe, FileText } from 'lucide-react';
 
 export default function App() {
   const [view, setView] = useState<ViewState>('auth');
   const [user, setUser] = useState<User | null>(null);
   const [sessionParams, setSessionParams] = useState<any>(null);
   const [currentSession, setCurrentSession] = useState<InterviewSession | null>(null);
-  const [isLightMode, setIsLightMode] = useState(() => {
-    return localStorage.getItem('theme') === 'light';
-  });
-
-  useEffect(() => {
-    if (isLightMode) {
-      document.documentElement.classList.add('light');
-      localStorage.setItem('theme', 'light');
-    } else {
-      document.documentElement.classList.remove('light');
-      localStorage.setItem('theme', 'dark');
-    }
-  }, [isLightMode]);
 
   React.useEffect(() => {
+    document.documentElement.classList.remove('light');
+    localStorage.setItem('theme', 'dark');
+    
     const authDataStr = localStorage.getItem('authData');
     if (authDataStr) {
       try {
@@ -95,16 +85,6 @@ export default function App() {
             </div>
             
             <div className="flex items-center gap-6">
-              <button 
-                onClick={() => setIsLightMode(!isLightMode)} 
-                className="p-2 text-slate-400 hover:text-slate-100 rounded-lg hover:bg-slate-800 transition-colors"
-                title={isLightMode ? "Switch to Dark Mode" : "Switch to Light Mode"}
-              >
-                {isLightMode ? <Moon size={18} /> : <Sun size={18} />}
-              </button>
-              
-              <div className="h-6 w-px bg-slate-800 mx-2"></div>
-
               <button onClick={() => setView('dashboard')} className={`text-sm font-medium transition-colors ${view === 'dashboard' ? 'text-blue-400' : 'text-slate-400 hover:text-slate-100'}`}>Dashboard</button>
               <button onClick={() => setView('bank')} className={`text-sm font-medium transition-colors ${view === 'bank' ? 'text-blue-400' : 'text-slate-400 hover:text-slate-100'}`}>Question Bank</button>
               
@@ -168,6 +148,18 @@ export default function App() {
                           dbUser.totalInterviews = newTotal;
                           dbUser.averageScore = newAvg;
                           dbUser.scoreHistory = [...(dbUser.scoreHistory || []), scoreNum];
+                          
+                          if (currentSession) {
+                              const startTime = new Date(currentSession.startTime).getTime();
+                              const endTime = new Date().getTime();
+                              const diffSeconds = (endTime - startTime) / 1000;
+                              dbUser.timeSpentSeconds = (dbUser.timeSpentSeconds || 0) + diffSeconds;
+                              
+                              if (!dbUser.companiesInterviewed) dbUser.companiesInterviewed = [];
+                              if (!dbUser.companiesInterviewed.includes(currentSession.company)) {
+                                  dbUser.companiesInterviewed.push(currentSession.company);
+                              }
+                          }
                           
                           usersDB[user.email].user = dbUser;
                           localStorage.setItem('usersDB', JSON.stringify(usersDB));
