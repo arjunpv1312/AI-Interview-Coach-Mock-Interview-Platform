@@ -1,7 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { InterviewSession } from '../types';
-import { Trophy, TrendingUp, RefreshCcw, Share2, Target, MessageCircle, Code2, Award } from 'lucide-react';
+import { Trophy, TrendingUp, RefreshCcw, Share2, Target, MessageCircle, Code2, Award, BookOpen, Download } from 'lucide-react';
 import { motion, useMotionValue, useTransform, animate } from 'motion/react';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 function AnimatedScore({ score }: { score: number }) {
   const count = useMotionValue(0);
@@ -54,7 +56,45 @@ interface ResultsViewProps {
 export function ResultsView({ session, onRetake, onDashboard, onSaveScore }: ResultsViewProps) {
   const [loading, setLoading] = useState(true);
   const [evaluation, setEvaluation] = useState<any>(null);
+  const [downloading, setDownloading] = useState(false);
+  const reportRef = useRef<HTMLDivElement>(null);
   const savedScoreRef = React.useRef(false);
+
+  const handleDownloadPDF = async () => {
+    if (!reportRef.current) return;
+    try {
+      setDownloading(true);
+      const canvas = await html2canvas(reportRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#0f172a' // match slate-900 or similar
+      });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      
+      let heightLeft = pdfHeight;
+      let position = 0;
+      
+      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
+      heightLeft -= pdf.internal.pageSize.getHeight();
+      
+      while (heightLeft >= 0) {
+        position = heightLeft - pdfHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
+        heightLeft -= pdf.internal.pageSize.getHeight();
+      }
+      
+      pdf.save('interview-report.pdf');
+    } catch (error) {
+      console.error('Failed to download PDF', error);
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -126,7 +166,7 @@ export function ResultsView({ session, onRetake, onDashboard, onSaveScore }: Res
     'text-rose-400 border-rose-500/30 bg-rose-500/10';
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-12">
+    <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-12" ref={reportRef}>
       
       {/* Top Header */}
       <div className="text-center space-y-6">
@@ -148,11 +188,29 @@ export function ResultsView({ session, onRetake, onDashboard, onSaveScore }: Res
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
+      <motion.div 
+        className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8"
+        initial="hidden"
+        animate="visible"
+        variants={{
+          visible: {
+            transition: {
+              staggerChildren: 0.1,
+              delayChildren: 0.3
+            }
+          }
+        }}
+      >
         
         {/* Core Analysis Cards */}
         <div className="lg:col-span-2 space-y-6">
-            <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 md:p-8 shadow-xl relative overflow-hidden">
+            <motion.div 
+                className="bg-slate-900 border border-slate-700 rounded-2xl p-6 md:p-8 shadow-xl relative overflow-hidden"
+                variants={{
+                    hidden: { opacity: 0, y: 20 },
+                    visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } }
+                }}
+            >
                 <div className="absolute top-0 right-0 p-8 opacity-10">
                     <Target size={120} />
                 </div>
@@ -162,10 +220,16 @@ export function ResultsView({ session, onRetake, onDashboard, onSaveScore }: Res
                 <p className="text-slate-300 leading-relaxed text-lg relative z-10">
                     {evaluation.overallSummary}
                 </p>
-            </div>
+            </motion.div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-lg">
+                <motion.div 
+                    className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-lg"
+                    variants={{
+                        hidden: { opacity: 0, y: 20 },
+                        visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } }
+                    }}
+                >
                     <div className="flex items-center gap-3 mb-4 text-purple-400">
                         <MessageCircle size={24} />
                         <h3 className="text-lg font-semibold text-white">Speaking Skills</h3>
@@ -173,9 +237,15 @@ export function ResultsView({ session, onRetake, onDashboard, onSaveScore }: Res
                     <p className="text-slate-400 leading-relaxed">
                         {evaluation.speakingSkills}
                     </p>
-                </div>
+                </motion.div>
                 
-                <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-lg">
+                <motion.div 
+                    className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-lg"
+                    variants={{
+                        hidden: { opacity: 0, y: 20 },
+                        visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } }
+                    }}
+                >
                     <div className="flex items-center gap-3 mb-4 text-emerald-400">
                         <Code2 size={24} />
                         <h3 className="text-lg font-semibold text-white">Technical Skills</h3>
@@ -183,13 +253,19 @@ export function ResultsView({ session, onRetake, onDashboard, onSaveScore }: Res
                     <p className="text-slate-400 leading-relaxed">
                         {evaluation.technicalSkills}
                     </p>
-                </div>
+                </motion.div>
             </div>
         </div>
 
         {/* Sidebar */}
         <div className="flex flex-col gap-6">
-            <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 shadow-xl">
+            <motion.div 
+                className="bg-slate-900 border border-slate-700 rounded-2xl p-6 shadow-xl"
+                variants={{
+                    hidden: { opacity: 0, y: 20 },
+                    visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } }
+                }}
+            >
                 <div className="flex items-center gap-2 text-white mb-6">
                     <TrendingUp className="text-amber-400" />
                     <h2 className="text-xl font-bold">Top Improvements</h2>
@@ -204,11 +280,55 @@ export function ResultsView({ session, onRetake, onDashboard, onSaveScore }: Res
                         </li>
                     ))}
                 </ul>
-            </div>
+            </motion.div>
 
-            <div className="flex flex-col justify-center gap-3 mt-auto">
+            {evaluation.studyTopics && evaluation.studyTopics.length > 0 && (
+                <motion.div 
+                    className="bg-slate-900 border border-slate-700 rounded-2xl p-6 shadow-xl"
+                    variants={{
+                        hidden: { opacity: 0, y: 20 },
+                        visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } }
+                    }}
+                >
+                    <div className="flex items-center gap-2 text-white mb-6">
+                        <BookOpen className="text-blue-400" />
+                        <h2 className="text-xl font-bold">Recommended Study</h2>
+                    </div>
+                    <ul className="space-y-4">
+                        {evaluation.studyTopics.map((topic: string, i: number) => (
+                            <li key={i} className="flex gap-3 text-slate-300">
+                                <span className="shrink-0 flex items-center justify-center w-6 h-6 rounded-full bg-slate-800 text-blue-400 text-xs font-bold font-mono">
+                                    {i + 1}
+                                </span>
+                                <span className="leading-snug">{topic}</span>
+                            </li>
+                        ))}
+                    </ul>
+                </motion.div>
+            )}
+
+            <motion.div 
+                className="flex flex-col justify-center gap-3 mt-auto"
+                data-html2canvas-ignore="true"
+                variants={{
+                    hidden: { opacity: 0, y: 20 },
+                    visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } }
+                }}
+            >
                 <button onClick={onRetake} className="w-full flex items-center justify-center gap-3 bg-slate-800 hover:bg-slate-700 text-white p-4 rounded-xl font-bold transition-colors">
                     <RefreshCcw size={20} /> New Interview
+                </button>
+                <button 
+                  onClick={handleDownloadPDF} 
+                  disabled={downloading}
+                  className="w-full flex items-center justify-center gap-3 bg-indigo-600/10 border border-indigo-600/50 hover:bg-indigo-600/20 text-indigo-400 disabled:opacity-50 p-4 rounded-xl font-bold transition-colors"
+                >
+                    {downloading ? (
+                      <div className="w-5 h-5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin"></div>
+                    ) : (
+                      <Download size={20} />
+                    )} 
+                    {downloading ? 'Generating PDF...' : 'Download Report'}
                 </button>
                 <button className="w-full flex items-center justify-center gap-3 bg-blue-600/10 border border-blue-600/50 hover:bg-blue-600/20 text-blue-400 p-4 rounded-xl font-bold transition-colors">
                     <Share2 size={20} /> Share Verdict
@@ -216,12 +336,17 @@ export function ResultsView({ session, onRetake, onDashboard, onSaveScore }: Res
                 <button onClick={onDashboard} className="w-full flex items-center justify-center gap-3 text-slate-400 hover:text-white p-4 font-medium transition-colors">
                     Back to Dashboard
                 </button>
-            </div>
+            </motion.div>
         </div>
-      </div>
+      </motion.div>
       
       {/* Deep-Dive Analysis Section */}
-      <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 md:p-8 shadow-xl relative overflow-hidden">
+      <motion.div 
+          className="bg-slate-900 border border-slate-700 rounded-2xl p-6 md:p-8 shadow-xl relative overflow-hidden"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: "easeOut", delay: 1 }}
+      >
           <div className="absolute top-0 right-0 p-8 opacity-5">
               <Target size={160} />
           </div>
@@ -238,7 +363,7 @@ export function ResultsView({ session, onRetake, onDashboard, onSaveScore }: Res
                   )}
               </div>
           </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

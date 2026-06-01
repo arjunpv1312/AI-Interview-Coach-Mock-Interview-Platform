@@ -1,3 +1,12 @@
+export interface PastSession {
+  id: string;
+  date: string;
+  company: string;
+  role: string;
+  score: number;
+  crackProbability: string;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -8,6 +17,7 @@ export interface User {
   scoreHistory?: number[];
   timeSpentSeconds?: number;
   companiesInterviewed?: string[];
+  pastSessions?: PastSession[];
 }
 
 export interface Question {
@@ -46,4 +56,4 @@ export interface InterviewSession {
   };
 }
 
-export type ViewState = 'auth' | 'dashboard' | 'setup' | 'live' | 'results' | 'bank';
+export type ViewState = 'auth' | 'dashboard' | 'setup' | 'live' | 'results' | 'bank' | 'history';

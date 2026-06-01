@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { User } from '../types';
-import { PlayCircle, History, BookOpen, Video, Target, Clock, Building, FileText, ExternalLink } from 'lucide-react';
+import { PlayCircle, History, BookOpen, Video, Target, Clock, Building, FileText, ExternalLink, Lightbulb } from 'lucide-react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
 } from 'recharts';
 import { Logo } from './Logo';
+import { mockQuestions } from '../data';
 
 interface DashboardViewProps {
   user: User;
@@ -22,6 +23,24 @@ export function DashboardView({ user, onNavigate }: DashboardViewProps) {
     }
     return `${m}m`;
   };
+
+  const dailyTip = useMemo(() => {
+    const today = new Date().toDateString();
+    let hash = 0;
+    for (let i = 0; i < today.length; i++) {
+        hash = today.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    
+    // Fallbacks just in case
+    const questionsWithTips = mockQuestions.filter(q => q.tips && q.tips.length > 0);
+    if (questionsWithTips.length === 0) return "Practice makes perfect. Keep doing mock interviews to build muscle memory.";
+    
+    const index = Math.abs(hash) % questionsWithTips.length;
+    const q = questionsWithTips[index];
+    const tipIndex = Math.abs(hash) % (q.tips?.length || 1);
+    
+    return q.tips?.[tipIndex] || "Consistent practice is key.";
+  }, []);
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500">
@@ -113,7 +132,7 @@ export function DashboardView({ user, onNavigate }: DashboardViewProps) {
           </button>
 
           <button 
-             onClick={() => onNavigate('results')}
+             onClick={() => onNavigate('history')}
              className="flex items-center gap-3 p-4 rounded-xl border border-slate-700 bg-slate-800/50 hover:bg-slate-800 hover:border-purple-500/50 transition-all text-left group"
           >
             <div className="p-2 rounded-lg bg-purple-500/20 text-purple-400 group-hover:scale-110 transition-transform">
@@ -157,6 +176,21 @@ export function DashboardView({ user, onNavigate }: DashboardViewProps) {
           </a>
           
         </div>
+        
+        {/* Daily Tip */}
+        <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-xl p-6 flex flex-col gap-4 relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-6 opacity-5 pointer-events-none">
+            <Lightbulb size={120} />
+          </div>
+          <div className="flex items-center gap-2 text-amber-400 mb-2 relative z-10">
+            <Lightbulb size={20} />
+            <h2 className="text-lg font-semibold text-white">Daily Interview Tip</h2>
+          </div>
+          <p className="text-slate-300 italic relative z-10 leading-relaxed border-l-2 border-amber-500/50 pl-4 py-1">
+            "{dailyTip}"
+          </p>
+        </div>
+        
         </div>
       </div>
     </div>

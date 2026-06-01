@@ -71,7 +71,8 @@ Conversation so far:
           speakingSkills: "Not enough data.",
           technicalSkills: "Not enough data.",
           deepDive: "Your server is missing the Gemini API Key. Please add it to your configuration.",
-          improvements: ["Add GEMINI_API_KEY to continue."]
+          improvements: ["Add GEMINI_API_KEY to continue."],
+          studyTopics: ["System Design Fundamentals", "Data Structures & Algorithms", "Mock Interview Practice"]
         });
       }
 
@@ -87,6 +88,7 @@ You MUST return ONLY a raw JSON object with the following fields:
 - technicalSkills: string (Evaluate the accuracy, depth, and problem-solving skills)
 - deepDive: string (A very comprehensive, multi-paragraph deep-dive analysis summarizing specific topics discussed, strengths, weaknesses, and nuances from the candidate's answers)
 - improvements: array of strings (List 3-5 specific, actionable areas they need to improve on)
+- studyTopics: array of strings (List exactly 3 specific, actionable technical study resources or topics for the user to research based on their technicalSkills evaluation)
 
 Transcript:
 `;
@@ -109,7 +111,8 @@ Transcript:
         speakingSkills: "Not enough data.",
         technicalSkills: "Not enough data.",
         deepDive: "There was a technical issue analyzing the interview data. Please try taking another interview.",
-        improvements: ["Practice more interviews."]
+        improvements: ["Practice more interviews."],
+        studyTopics: ["System Design Fundamentals", "Data Structures & Algorithms", "Mock Interview Practice"]
       };
 
       try {
@@ -134,7 +137,8 @@ Transcript:
         speakingSkills: "Not enough data.",
         technicalSkills: "Not enough data.",
         deepDive: "There was an unexpected error connecting to the AI system. We apologize for the inconvenience and recommend trying your interview again.",
-        improvements: ["Ensure stable network connection.", "Try another mock interview session."]
+        improvements: ["Ensure stable network connection.", "Try another mock interview session."],
+        studyTopics: ["System Design Fundamentals", "Data Structures & Algorithms", "Mock Interview Practice"]
       });
     }
   });

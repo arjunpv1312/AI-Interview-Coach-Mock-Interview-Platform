@@ -11,8 +11,10 @@ import { LiveInterviewView } from './components/LiveInterviewView';
 import { ResultsView } from './components/ResultsView';
 import { QuestionBankView } from './components/QuestionBankView';
 import { AuthView } from './components/AuthView';
+import { HistoryView } from './components/HistoryView';
 import { Logo } from './components/Logo';
 import { UserCircle, LogOut, Globe, FileText } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
 
 export default function App() {
   const [view, setView] = useState<ViewState>('auth');
@@ -72,11 +74,17 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100 font-sans selection:bg-blue-500/30">
+    <div className="min-h-screen bg-slate-950 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100 font-sans selection:bg-blue-500/30 overflow-x-hidden relative flex flex-col">
       
+      {/* Background Glow Orbs */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+        <div className="absolute -top-[40%] -left-[20%] w-[70%] h-[70%] rounded-full bg-blue-900/20 blur-[120px] animate-pulse [animation-duration:10s]"></div>
+        <div className="absolute top-[60%] -right-[10%] w-[60%] h-[60%] rounded-full bg-indigo-900/10 blur-[120px] animate-pulse [animation-duration:12s] [animation-delay:2s]"></div>
+      </div>
+
       {/* Navigation */}
       {(view !== 'live' && view !== 'auth') && (
-        <nav className="border-b border-slate-800 bg-slate-950/50 backdrop-blur-lg sticky top-0 z-50 transition-colors">
+        <nav className="border-b border-slate-800 bg-slate-950/50 backdrop-blur-lg sticky top-0 z-50 transition-colors relative">
           <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         <div className="flex items-center gap-3 cursor-pointer" onClick={() => setView('dashboard')}>
           <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center font-bold text-slate-100 shadow-lg shadow-blue-500/20 overflow-hidden shrink-0">
@@ -88,6 +96,7 @@ export default function App() {
             <div className="flex items-center gap-6">
               <button onClick={() => setView('dashboard')} className={`text-sm font-medium transition-colors ${view === 'dashboard' ? 'text-blue-400' : 'text-slate-400 hover:text-slate-100'}`}>Dashboard</button>
               <button onClick={() => setView('bank')} className={`text-sm font-medium transition-colors ${view === 'bank' ? 'text-blue-400' : 'text-slate-400 hover:text-slate-100'}`}>Question Bank</button>
+              <button onClick={() => setView('history')} className={`text-sm font-medium transition-colors ${view === 'history' ? 'text-blue-400' : 'text-slate-400 hover:text-slate-100'}`}>History</button>
               
               <div className="h-6 w-px bg-slate-800 mx-2"></div>
               
@@ -108,71 +117,104 @@ export default function App() {
       )}
 
       {/* Main Content Area */}
-      <main className={`px-4 sm:px-6 py-8 ${view === 'live' ? 'py-4' : ''} ${view === 'auth' ? 'py-0 px-0' : ''}`}>
-        {view === 'auth' && (
-          <AuthView onLogin={(u) => {
-            localStorage.setItem('authData', JSON.stringify({ email: u.email, timestamp: new Date().getTime() }));
-            setUser(u);
-            setView('dashboard');
-          }} />
-        )}
-        {view === 'dashboard' && user && <DashboardView user={user} onNavigate={setView} />}
-        {view === 'setup' && <SetupView onStart={handleStartInterview} onCancel={cancelInterview} />}
-        {view === 'live' && (
-           <LiveInterviewView 
-              config={sessionParams} 
-              onComplete={handleCompleteInterview} 
-              onCancel={cancelInterview} 
-           />
-        )}
-        {view === 'results' && currentSession && user && (
-           <ResultsView 
-              session={currentSession} 
-              onRetake={() => setView('setup')} 
-              onDashboard={() => setView('dashboard')}
-              onSaveScore={(score) => {
-                  if (user && user.email) {
-                      const usersDB = JSON.parse(localStorage.getItem('usersDB') || '{}');
-                      if (usersDB[user.email]) {
-                          const dbUser = usersDB[user.email].user;
-                          const newTotal = (dbUser.totalInterviews || 0) + 1;
-                          
-                          // Simple weighted average for the mock score assuming evaluating gives a score out of 100
-                          // Actually, the AI Returns a probability. We can map "High" to 90, "Moderate" to 70, "Needs Work" to 40.
-                          let scoreNum = score.overallScore ?? 50;
-                          if (scoreNum === 50) {
-                              if (score.crackProbability === 'Highly Likely' || score.crackProbability === 'High') scoreNum = 90;
-                              if (score.crackProbability === 'Possible' || score.crackProbability === 'Moderate') scoreNum = 70;
-                              if (score.crackProbability === 'Needs Work') scoreNum = 40;
-                          }
+      <main className={`px-4 sm:px-6 py-8 relative ${view === 'live' ? 'py-4' : ''} ${view === 'auth' ? 'py-0 px-0' : ''} flex-1 flex flex-col`}>
+        <AnimatePresence mode="wait">
+          {view === 'auth' && (
+            <motion.div key="auth" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="flex-1 flex flex-col">
+              <AuthView onLogin={(u) => {
+                localStorage.setItem('authData', JSON.stringify({ email: u.email, timestamp: new Date().getTime() }));
+                setUser(u);
+                setView('dashboard');
+              }} />
+            </motion.div>
+          )}
+          {view === 'dashboard' && user && (
+            <motion.div key="dashboard" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }}>
+              <DashboardView user={user} onNavigate={setView} />
+            </motion.div>
+          )}
+          {view === 'setup' && (
+            <motion.div key="setup" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }}>
+              <SetupView onStart={handleStartInterview} onCancel={cancelInterview} />
+            </motion.div>
+          )}
+          {view === 'live' && (
+            <motion.div key="live" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="w-full flex justify-center">
+              <LiveInterviewView 
+                 config={sessionParams} 
+                 onComplete={handleCompleteInterview} 
+                 onCancel={cancelInterview} 
+              />
+            </motion.div>
+          )}
+          {view === 'results' && currentSession && user && (
+            <motion.div key="results" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }}>
+              <ResultsView 
+                 session={currentSession} 
+                 onRetake={() => setView('setup')} 
+                 onDashboard={() => setView('dashboard')}
+                 onSaveScore={(score) => {
+                     if (user && user.email) {
+                         const usersDB = JSON.parse(localStorage.getItem('usersDB') || '{}');
+                         if (usersDB[user.email]) {
+                             const dbUser = usersDB[user.email].user;
+                             const newTotal = (dbUser.totalInterviews || 0) + 1;
+                             
+                             let scoreNum = score.overallScore ?? 50;
+                             if (scoreNum === 50) {
+                                 if (score.crackProbability === 'Highly Likely' || score.crackProbability === 'High') scoreNum = 90;
+                                 if (score.crackProbability === 'Possible' || score.crackProbability === 'Moderate') scoreNum = 70;
+                                 if (score.crackProbability === 'Needs Work') scoreNum = 40;
+                             }
 
-                          const newAvg = Math.round((((dbUser.averageScore || 0) * (dbUser.totalInterviews || 0)) + scoreNum) / newTotal);
-                          
-                          dbUser.totalInterviews = newTotal;
-                          dbUser.averageScore = newAvg;
-                          dbUser.scoreHistory = [...(dbUser.scoreHistory || []), scoreNum];
-                          
-                          if (currentSession) {
-                              const startTime = new Date(currentSession.startTime).getTime();
-                              const endTime = new Date().getTime();
-                              const diffSeconds = (endTime - startTime) / 1000;
-                              dbUser.timeSpentSeconds = (dbUser.timeSpentSeconds || 0) + diffSeconds;
-                              
-                              if (!dbUser.companiesInterviewed) dbUser.companiesInterviewed = [];
-                              if (!dbUser.companiesInterviewed.includes(currentSession.company)) {
-                                  dbUser.companiesInterviewed.push(currentSession.company);
-                              }
-                          }
-                          
-                          usersDB[user.email].user = dbUser;
-                          localStorage.setItem('usersDB', JSON.stringify(usersDB));
-                          setUser(dbUser);
-                      }
-                  }
-              }}
-           />
-        )}
-        {view === 'bank' && <QuestionBankView onNavigate={setView} />}
+                             const newAvg = Math.round((((dbUser.averageScore || 0) * (dbUser.totalInterviews || 0)) + scoreNum) / newTotal);
+                             
+                             dbUser.totalInterviews = newTotal;
+                             dbUser.averageScore = newAvg;
+                             dbUser.scoreHistory = [...(dbUser.scoreHistory || []), scoreNum];
+                             
+                             if (currentSession) {
+                                 const startTime = new Date(currentSession.startTime).getTime();
+                                 const endTime = new Date().getTime();
+                                 const diffSeconds = (endTime - startTime) / 1000;
+                                 dbUser.timeSpentSeconds = (dbUser.timeSpentSeconds || 0) + diffSeconds;
+                                 
+                                 if (!dbUser.companiesInterviewed) dbUser.companiesInterviewed = [];
+                                 if (!dbUser.companiesInterviewed.includes(currentSession.company)) {
+                                     dbUser.companiesInterviewed.push(currentSession.company);
+                                 }
+
+                                 if (!dbUser.pastSessions) dbUser.pastSessions = [];
+                                 dbUser.pastSessions.unshift({
+                                     id: currentSession.id,
+                                     date: currentSession.startTime,
+                                     company: currentSession.company,
+                                     role: currentSession.role,
+                                     score: scoreNum,
+                                     crackProbability: score.crackProbability || 'Unknown'
+                                 });
+                             }
+                             
+                             usersDB[user.email].user = dbUser;
+                             localStorage.setItem('usersDB', JSON.stringify(usersDB));
+                             setUser(dbUser);
+                         }
+                     }
+                 }}
+              />
+            </motion.div>
+          )}
+          {view === 'bank' && (
+            <motion.div key="bank" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }}>
+              <QuestionBankView onNavigate={setView} />
+            </motion.div>
+          )}
+          {view === 'history' && user && (
+            <motion.div key="history" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }}>
+              <HistoryView user={user} onNavigate={setView} />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
       
       {/* Elegantly styled Footer / Contact links */}

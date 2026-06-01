@@ -77,6 +77,7 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
 
   const speakText = (text: string) => {
     window.speechSynthesis.cancel();
+    setIsSpeaking(true);
     
     setTimeout(() => {
         const utterance = new SpeechSynthesisUtterance(text);
@@ -84,6 +85,14 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
         if (voice) utterance.voice = voice;
         utterance.rate = 1.0;
         utterance.pitch = 1.0;
+        
+        utterance.onend = () => {
+            setIsSpeaking(false);
+        };
+        utterance.onerror = () => {
+            setIsSpeaking(false);
+        };
+
         window.speechSynthesis.speak(utterance);
     }, 50);
   };
@@ -133,16 +142,31 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
   }, []); // Run once on mount
 
   const [isMicOn, setIsMicOn] = useState(true);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const isMicOnRef = useRef(true);
   const isThinkingRef = useRef(true);
+  const isSpeakingRef = useRef(false);
   const answerTextRef = useRef('');
+  const persistedTranscriptRef = useRef('');
   const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     isMicOnRef.current = isMicOn;
     isThinkingRef.current = isThinking;
+    isSpeakingRef.current = isSpeaking;
+
+    if (recognitionRef.current) {
+        if (isMicOn && !isThinking && !isSpeaking) {
+            try { recognitionRef.current.start(); } catch(e) {}
+        } else {
+            try { recognitionRef.current.stop(); } catch(e) {}
+        }
+    }
+  }, [isMicOn, isThinking, isSpeaking]);
+
+  useEffect(() => {
     answerTextRef.current = answerText;
-  }, [isMicOn, isThinking, answerText]);
+  }, [answerText]);
 
   // Silence detection for auto-submit
   useEffect(() => {
@@ -173,16 +197,26 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
             window.speechSynthesis.cancel(); // User interrupted the AI
         }
 
-        let currentTranscript = '';
-        for (let i = 0; i < event.results.length; i++) {
-          currentTranscript += event.results[i][0].transcript;
+        let finalStr = '';
+        let interimStr = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          if (event.results[i].isFinal) {
+            finalStr += event.results[i][0].transcript;
+          } else {
+            interimStr += event.results[i][0].transcript;
+          }
         }
-        setAnswerText(currentTranscript);
+        
+        if (finalStr) {
+            persistedTranscriptRef.current += finalStr + ' ';
+        }
+        
+        setAnswerText(persistedTranscriptRef.current + interimStr);
       };
 
       recognitionRef.current.onend = () => {
          // Keep it alive if mic is deliberately on and we are not thinking
-         if (isMicOnRef.current && !isThinkingRef.current) {
+         if (isMicOnRef.current && !isThinkingRef.current && !isSpeakingRef.current) {
              try {
                 recognitionRef.current.start();
              } catch(e) {}
@@ -195,6 +229,12 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
             setIsMicOn(false);
         }
       };
+
+      if (isMicOnRef.current && !isThinkingRef.current && !isSpeakingRef.current) {
+          try {
+              recognitionRef.current.start();
+          } catch(e) {}
+      }
     }
     
     return () => {
@@ -235,6 +275,7 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
     
     setHistory(newHistory);
     setAnswerText('');
+    persistedTranscriptRef.current = '';
     setIsThinking(true);
     setTurnCount(prev => prev + 1);
 
@@ -333,11 +374,11 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
                     <div className="w-32 h-32 rounded-[2rem] bg-slate-800 border-2 border-slate-700/80 flex items-center justify-center shadow-xl p-6 z-20 relative overflow-hidden">
                         {isThinking ? (
                             <div className="flex gap-2">
-                                <span className="w-3 h-3 bg-slate-500 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-                                <span className="w-3 h-3 bg-slate-500 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-                                <span className="w-3 h-3 bg-slate-500 rounded-full animate-bounce"></span>
+                                <span className="w-3 h-3 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                                <span className="w-3 h-3 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                                <span className="w-3 h-3 bg-blue-500 rounded-full animate-bounce"></span>
                             </div>
-                        ) : (
+                        ) : isSpeaking ? (
                             <div className="flex gap-1.5 items-center justify-center h-full w-full">
                                 {[1, 2, 3, 4, 5, 6, 7].map((i) => (
                                     <motion.div 
@@ -354,15 +395,21 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
                                     />
                                 ))}
                             </div>
+                        ) : (
+                            <div className="flex gap-2">
+                                <div className="w-16 h-16 bg-blue-500/20 rounded-full animate-pulse flex items-center justify-center">
+                                    <Mic size={24} className="text-blue-400" />
+                                </div>
+                            </div>
                         )}
                     </div>
                 </div>
                 
                 <h3 className="text-xl font-bold text-white mb-2">
-                    {isThinking ? 'Interviewer is thinking...' : 'Interviewer is listening'}
+                    {isThinking ? 'Interviewer is thinking...' : isSpeaking ? 'Interviewer is speaking...' : 'Listening to you...'}
                 </h3>
                 <p className="text-slate-400 mb-8 max-w-[280px] text-sm">
-                    {isThinking ? 'Please wait a moment.' : 'Listen carefully to the question. Do not read.'}
+                    {isThinking ? 'Please wait a moment.' : isSpeaking ? 'Listen carefully to the response.' : 'Speak clearly. Your response is being recorded.'}
                 </p>
                 
                 <div className="flex gap-3">

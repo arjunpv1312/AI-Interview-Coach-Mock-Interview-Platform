@@ -1,11 +1,11 @@
 import { Question } from './types';
 
 export const mockQuestions: Question[] = [
-  { id: 'q1', text: 'Reverse a linked list.', company: 'Google', role: 'Software Engineer', difficulty: 'Easy', category: 'Technical', timesAsked: 154 },
-  { id: 'q2', text: 'Design a scalable chat application.', company: 'Meta', role: 'Software Engineer', difficulty: 'Hard', category: 'System Design', timesAsked: 89 },
-  { id: 'q3', text: 'Tell me about a time you had a conflict with a team member.', company: 'Amazon', role: 'Product Manager', difficulty: 'Medium', category: 'Behavioural', timesAsked: 210 },
-  { id: 'q4', text: 'Implement an LRU Cache.', company: 'Microsoft', role: 'Software Engineer', difficulty: 'Medium', category: 'Technical', timesAsked: 320 },
-  { id: 'q5', text: 'How would you measure the success of a new feature?', company: 'Google', role: 'Data Scientist', difficulty: 'Medium', category: 'Technical', timesAsked: 65 },
+  { id: 'q1', text: 'Reverse a linked list.', company: 'Google', role: 'Software Engineer', difficulty: 'Easy', category: 'Technical', timesAsked: 154, tips: ['Use three pointers to keep track of previous, current, and next nodes.', 'Be careful with the edge case where the list is empty or has only one node.'] },
+  { id: 'q2', text: 'Design a scalable chat application.', company: 'Meta', role: 'Software Engineer', difficulty: 'Hard', category: 'System Design', timesAsked: 89, tips: ['Consider using WebSockets for real-time bidirectional communication.', 'Discuss partitioning strategies for chat history.'] },
+  { id: 'q3', text: 'Tell me about a time you had a conflict with a team member.', company: 'Amazon', role: 'Product Manager', difficulty: 'Medium', category: 'Behavioural', timesAsked: 210, tips: ['Use the STAR method (Situation, Task, Action, Result) to structure your answer.', 'Focus on your actions and how you led resolution.'] },
+  { id: 'q4', text: 'Implement an LRU Cache.', company: 'Microsoft', role: 'Software Engineer', difficulty: 'Medium', category: 'Technical', timesAsked: 320, tips: ['A combination of a doubly-linked list and a hash map provides O(1) time complexity.', 'Remember to update both data structures when evicting an item.'] },
+  { id: 'q5', text: 'How would you measure the success of a new feature?', company: 'Google', role: 'Data Scientist', difficulty: 'Medium', category: 'Technical', timesAsked: 65, tips: ['Before discussing metrics, clarify the goal of the feature.', 'Discuss primary metrics, secondary metrics, and guardrail metrics.'] },
   
   // Industrial questions
   { id: 'q6', text: 'Design a rate limiter for a production API API.', company: 'Stripe', role: 'Backend Developer', difficulty: 'Hard', category: 'System Design', timesAsked: 400 },
