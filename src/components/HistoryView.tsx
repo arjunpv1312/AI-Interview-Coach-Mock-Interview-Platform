@@ -1,7 +1,7 @@
-import React from 'react';
-import { User } from '../types';
-import { motion } from 'motion/react';
-import { Building2, Briefcase, Activity, Calendar, Download } from 'lucide-react';
+import React, { useState } from 'react';
+import { User, PastSession } from '../types';
+import { motion, AnimatePresence } from 'motion/react';
+import { Building2, Briefcase, Activity, Calendar, Download, X, Target, CheckCircle2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
 interface HistoryViewProps {
@@ -10,6 +10,7 @@ interface HistoryViewProps {
 }
 
 export function HistoryView({ user, onNavigate }: HistoryViewProps) {
+    const [selectedSession, setSelectedSession] = useState<PastSession | null>(null);
     const pastSessions = user.pastSessions || [];
 
     const getScoreColor = (score: number) => {
@@ -87,7 +88,8 @@ export function HistoryView({ user, onNavigate }: HistoryViewProps) {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.05 }}
-                    className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg flex flex-col md:flex-row gap-6 justify-between items-start md:items-center hover:border-slate-700 transition-colors"
+                    onClick={() => setSelectedSession(session)}
+                    className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg flex flex-col md:flex-row gap-6 justify-between items-start md:items-center hover:border-slate-700 transition-colors cursor-pointer"
                 >
                     <div className="flex flex-col gap-4 flex-1">
                         <div className="flex items-center gap-3">
@@ -136,6 +138,114 @@ export function HistoryView({ user, onNavigate }: HistoryViewProps) {
             ))}
         </div>
       )}
+
+      {/* Modal */}
+      <AnimatePresence>
+        {selectedSession && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm"
+            onClick={() => setSelectedSession(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-slate-900 border border-slate-800 rounded-2xl p-6 md:p-8 max-w-2xl w-full shadow-2xl overflow-y-auto max-h-[90vh] relative"
+            >
+              <button 
+                onClick={() => setSelectedSession(null)}
+                className="absolute top-4 right-4 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 p-2 rounded-full transition-colors"
+              >
+                <X size={20} />
+              </button>
+
+              <div className="flex items-center gap-4 mb-6 pr-12">
+                <div className="w-16 h-16 bg-slate-800 rounded-2xl flex items-center justify-center text-blue-400 shrink-0">
+                    <Building2 size={32} />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-white">{selectedSession.company}</h2>
+                  <p className="text-slate-400 text-lg flex items-center gap-2 mt-1">
+                    <Briefcase size={16} />
+                    {selectedSession.role}
+                  </p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-800">
+                  <div className="text-sm text-slate-400 mb-1">Score</div>
+                  <div className={`text-xl font-bold ${getScoreColor(selectedSession.score)}`}>{selectedSession.score}/100</div>
+                </div>
+                <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-800">
+                  <div className="text-sm text-slate-400 mb-1">Probability</div>
+                  <div className={`text-sm font-bold ${
+                     selectedSession.crackProbability === 'Highly Likely' || selectedSession.crackProbability === 'High' ? 'text-emerald-400' : 
+                     selectedSession.crackProbability === 'Possible' || selectedSession.crackProbability === 'Moderate' ? 'text-amber-400' : 'text-rose-400'
+                  }`}>
+                    {selectedSession.crackProbability}
+                  </div>
+                </div>
+                <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-800 col-span-2">
+                  <div className="text-sm text-slate-400 mb-1">Date</div>
+                  <div className="text-slate-200">
+                    {selectedSession.date ? format(parseISO(selectedSession.date), 'MMM d, yyyy h:mm a') : 'Unknown'}
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-bold text-white mb-3">Overall Summary</h3>
+                  <div className="bg-slate-800/30 p-4 rounded-xl border border-slate-800">
+                    <p className="text-slate-300 leading-relaxed">
+                      {selectedSession.overallSummary || "Summary details are not available for this session."}
+                    </p>
+                  </div>
+                </div>
+
+                {selectedSession.improvements && selectedSession.improvements.length > 0 && (
+                  <div>
+                    <h3 className="text-lg flex items-center gap-2 font-bold text-amber-400 mb-3">
+                      <Target size={20} />
+                      Areas for Improvement
+                    </h3>
+                    <ul className="space-y-2">
+                      {selectedSession.improvements.map((item, idx) => (
+                         <li key={idx} className="flex gap-3 text-slate-300">
+                           <span className="text-amber-500/50 font-bold mt-0.5">•</span>
+                           <span>{item}</span>
+                         </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {selectedSession.studyTopics && selectedSession.studyTopics.length > 0 && (
+                  <div>
+                    <h3 className="text-lg flex items-center gap-2 font-bold text-emerald-400 mb-3">
+                      <CheckCircle2 size={20} />
+                      Recommended Study Topics
+                    </h3>
+                    <ul className="space-y-2">
+                      {selectedSession.studyTopics.map((item, idx) => (
+                         <li key={idx} className="flex gap-3 text-slate-300">
+                           <span className="text-emerald-500/50 font-bold mt-0.5">•</span>
+                           <span>{item}</span>
+                         </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

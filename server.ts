@@ -44,7 +44,7 @@ Conversation so far:
       chatPrompt += `\nInterviewer:`;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-2.0-flash',
         contents: chatPrompt,
       });
 
@@ -53,9 +53,16 @@ Conversation so far:
       }
 
       res.json({ text: response.text });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error getting interaction:', error);
-      res.json({ text: "I'm having a technical issue processing that. Could you please answer the previous question again, or rephrase it?" });
+      let fallbackText = "I'm having a technical issue processing that. Could you please answer the previous question again, or rephrase it?";
+      
+      const errString = String(error) + " " + JSON.stringify(error, Object.getOwnPropertyNames(error));
+      if (errString.includes('429') && errString.includes('Quota')) {
+         fallbackText = "I apologize, but we have reached our API rate limit. Please wait for about a minute and try answering again.";
+      }
+
+      res.json({ text: fallbackText });
     }
   });
 
@@ -98,7 +105,7 @@ Transcript:
       });
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-2.0-flash',
         contents: chatPrompt,
       });
 
@@ -128,12 +135,19 @@ Transcript:
       }
 
       res.json(parsedResponse);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error getting evaluation:', error);
+      
+      const errString = String(error) + " " + JSON.stringify(error, Object.getOwnPropertyNames(error));
+      let summaryText = `We couldn't fully evaluate your performance due to a server error.`;
+      if (errString.includes('429') && errString.includes('Quota')) {
+          summaryText = "We couldn't fully evaluate your performance because we hit the API rate limit. Please try again later.";
+      }
+
       res.json({
         crackProbability: "Needs Work",
         overallScore: 0,
-        overallSummary: "We couldn't fully evaluate your performance due to a server error.",
+        overallSummary: summaryText,
         speakingSkills: "Not enough data.",
         technicalSkills: "Not enough data.",
         deepDive: "There was an unexpected error connecting to the AI system. We apologize for the inconvenience and recommend trying your interview again.",

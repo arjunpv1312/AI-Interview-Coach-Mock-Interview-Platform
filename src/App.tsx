@@ -49,6 +49,11 @@ export default function App() {
   }, []);
 
   const handleStartInterview = (config: any) => {
+    // Unlock Web Speech API on direct user interaction
+    const unlockUtterance = new SpeechSynthesisUtterance('');
+    unlockUtterance.volume = 0;
+    window.speechSynthesis.speak(unlockUtterance);
+
     setSessionParams(config);
     setView('live');
   };
@@ -191,7 +196,10 @@ export default function App() {
                                      company: currentSession.company,
                                      role: currentSession.role,
                                      score: scoreNum,
-                                     crackProbability: score.crackProbability || 'Unknown'
+                                     crackProbability: score.crackProbability || 'Unknown',
+                                     overallSummary: score.overallSummary,
+                                     improvements: score.improvements,
+                                     studyTopics: score.studyTopics
                                  });
                              }
                              

@@ -5,6 +5,9 @@ export interface PastSession {
   role: string;
   score: number;
   crackProbability: string;
+  overallSummary?: string;
+  improvements?: string[];
+  studyTopics?: string[];
 }
 
 export interface User {
