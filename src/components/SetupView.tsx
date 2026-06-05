@@ -20,6 +20,11 @@ export function SetupView({ onStart, onCancel }: SetupViewProps) {
 
   const handleStart = () => {
     if (isFormValid) {
+        if ('speechSynthesis' in window) {
+           const utterance = new SpeechSynthesisUtterance('');
+           utterance.volume = 0;
+           window.speechSynthesis.speak(utterance);
+        }
         onStart(config);
     }
   };

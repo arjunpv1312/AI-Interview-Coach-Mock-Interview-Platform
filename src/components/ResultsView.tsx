@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { InterviewSession } from '../types';
 import { Trophy, TrendingUp, RefreshCcw, Share2, Target, MessageCircle, Code2, Award, BookOpen, Download } from 'lucide-react';
 import { motion, useMotionValue, useTransform, animate } from 'motion/react';
-import html2canvas from 'html2canvas';
+import { toPng } from 'html-to-image';
 import jsPDF from 'jspdf';
 
 function AnimatedScore({ score }: { score: number }) {
@@ -64,16 +64,17 @@ export function ResultsView({ session, onRetake, onDashboard, onSaveScore }: Res
     if (!reportRef.current) return;
     try {
       setDownloading(true);
-      const canvas = await html2canvas(reportRef.current, {
-        scale: 2,
-        useCORS: true,
+      const dataUrl = await toPng(reportRef.current, {
+        pixelRatio: 2,
         backgroundColor: '#0f172a' // match slate-900 or similar
       });
-      const imgData = canvas.toDataURL('image/png');
+      const imgData = dataUrl;
       const pdf = new jsPDF('p', 'mm', 'a4');
       
       const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      // Estimate height since toPng doesn't return canvas directly. We use aspect ratio of current element.
+      const aspectInfo = reportRef.current.getBoundingClientRect();
+      const pdfHeight = (aspectInfo.height * pdfWidth) / aspectInfo.width;
       
       let heightLeft = pdfHeight;
       let position = 0;

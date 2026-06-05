@@ -12,15 +12,37 @@ import { ResultsView } from './components/ResultsView';
 import { QuestionBankView } from './components/QuestionBankView';
 import { AuthView } from './components/AuthView';
 import { HistoryView } from './components/HistoryView';
+import { SimulationView } from './components/SimulationView';
+import { CertificateView } from './components/CertificateView';
+import { SuggestionsView } from './components/SuggestionsView';
+import { LearnerView } from './components/LearnerView';
+import { SecurityView } from './components/SecurityView';
 import { Logo } from './components/Logo';
-import { UserCircle, LogOut, Globe, FileText } from 'lucide-react';
+import { UserCircle, LogOut, Globe, FileText, Palette, Sparkles, Cpu, ShieldCheck } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
+
+export const pageTransition = { duration: 0.5, ease: [0.16, 1, 0.3, 1] };
 
 export default function App() {
   const [view, setView] = useState<ViewState>('auth');
   const [user, setUser] = useState<User | null>(null);
   const [sessionParams, setSessionParams] = useState<any>(null);
   const [currentSession, setCurrentSession] = useState<InterviewSession | null>(null);
+  const [themeDropdown, setThemeDropdown] = useState(false);
+
+  const handleThemeChange = (theme: 'default' | 'midnight' | 'forest' | 'sunset') => {
+     document.documentElement.dataset.theme = theme;
+     if (user) {
+         const updatedUser = { ...user, themePreference: theme };
+         setUser(updatedUser);
+         const usersDB = JSON.parse(localStorage.getItem('usersDB') || '{}');
+         if (usersDB[user.email]) {
+             usersDB[user.email].user = updatedUser;
+             localStorage.setItem('usersDB', JSON.stringify(usersDB));
+         }
+     }
+     setThemeDropdown(false);
+  };
 
   React.useEffect(() => {
     document.documentElement.classList.remove('light');
@@ -36,7 +58,11 @@ export default function App() {
         if (now - authData.timestamp < oneWeek) {
           const usersDB = JSON.parse(localStorage.getItem('usersDB') || '{}');
           if (usersDB[authData.email]) {
-            setUser(usersDB[authData.email].user);
+            const dbUser = usersDB[authData.email].user;
+            setUser(dbUser);
+            if (dbUser.themePreference) {
+              document.documentElement.dataset.theme = dbUser.themePreference;
+            }
             setView('dashboard');
           }
         } else {
@@ -102,8 +128,44 @@ export default function App() {
               <button onClick={() => setView('dashboard')} className={`text-sm font-medium transition-colors ${view === 'dashboard' ? 'text-blue-400' : 'text-slate-400 hover:text-slate-100'}`}>Dashboard</button>
               <button onClick={() => setView('bank')} className={`text-sm font-medium transition-colors ${view === 'bank' ? 'text-blue-400' : 'text-slate-400 hover:text-slate-100'}`}>Question Bank</button>
               <button onClick={() => setView('history')} className={`text-sm font-medium transition-colors ${view === 'history' ? 'text-blue-400' : 'text-slate-400 hover:text-slate-100'}`}>History</button>
+              <button onClick={() => setView('suggestions')} className={`text-sm font-medium transition-colors flex items-center gap-1 ${view === 'suggestions' ? 'text-blue-400' : 'text-slate-400 hover:text-slate-100'}`}><Sparkles size={14} /> Insights</button>
+              <button onClick={() => setView('learner')} className={`text-sm font-medium transition-colors flex items-center gap-1 ${view === 'learner' ? 'text-emerald-400' : 'text-slate-400 hover:text-slate-100'}`}><Cpu size={14} /> Learner AI</button>
               
               <div className="h-6 w-px bg-slate-800 mx-2"></div>
+
+              <button 
+                  onClick={() => setView('security')} 
+                  className={`text-sm font-medium transition-colors flex items-center gap-1 ${view === 'security' ? 'text-emerald-400' : 'text-slate-400 hover:text-slate-100'}`}
+                  title="Run High Secure Malware & Safety Test"
+              >
+                  <ShieldCheck size={16} /> Security
+              </button>
+              
+              <div className="relative">
+                <button 
+                  onClick={() => setThemeDropdown(!themeDropdown)}
+                  className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors flex items-center gap-2"
+                  title="Change Theme"
+                >
+                  <Palette size={18} />
+                </button>
+                {themeDropdown && (
+                  <div className="absolute right-0 mt-2 w-48 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden z-[100] animate-in fade-in zoom-in duration-200">
+                    <button onClick={() => handleThemeChange('default')} className="w-full text-left px-4 py-3 hover:bg-slate-700 text-sm flex items-center gap-3">
+                       <span className="w-3 h-3 rounded-full bg-slate-500"></span> Cosmic Slate
+                    </button>
+                    <button onClick={() => handleThemeChange('midnight')} className="w-full text-left px-4 py-3 hover:bg-slate-700 text-sm flex items-center gap-3">
+                       <span className="w-3 h-3 rounded-full bg-blue-600"></span> Midnight Blue
+                    </button>
+                    <button onClick={() => handleThemeChange('forest')} className="w-full text-left px-4 py-3 hover:bg-slate-700 text-sm flex items-center gap-3">
+                       <span className="w-3 h-3 rounded-full bg-emerald-500"></span> Emerald Forest
+                    </button>
+                    <button onClick={() => handleThemeChange('sunset')} className="w-full text-left px-4 py-3 hover:bg-slate-700 text-sm flex items-center gap-3">
+                       <span className="w-3 h-3 rounded-full bg-rose-500"></span> Crimson Sunset
+                    </button>
+                  </div>
+                )}
+              </div>
               
               <div className="flex items-center gap-2 text-sm font-medium text-slate-300">
                 <UserCircle size={20} className="text-slate-400" />
@@ -125,7 +187,7 @@ export default function App() {
       <main className={`px-4 sm:px-6 py-8 relative ${view === 'live' ? 'py-4' : ''} ${view === 'auth' ? 'py-0 px-0' : ''} flex-1 flex flex-col`}>
         <AnimatePresence mode="wait">
           {view === 'auth' && (
-            <motion.div key="auth" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="flex-1 flex flex-col">
+            <motion.div key="auth" initial={{ opacity: 0, scale: 0.98, filter: 'blur(4px)' }} animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }} exit={{ opacity: 0, scale: 0.98, filter: 'blur(4px)' }} transition={pageTransition} className="flex-1 flex flex-col">
               <AuthView onLogin={(u) => {
                 localStorage.setItem('authData', JSON.stringify({ email: u.email, timestamp: new Date().getTime() }));
                 setUser(u);
@@ -134,17 +196,17 @@ export default function App() {
             </motion.div>
           )}
           {view === 'dashboard' && user && (
-            <motion.div key="dashboard" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }}>
+            <motion.div key="dashboard" initial={{ opacity: 0, y: 15, filter: 'blur(4px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, y: -15, filter: 'blur(4px)' }} transition={pageTransition}>
               <DashboardView user={user} onNavigate={setView} />
             </motion.div>
           )}
           {view === 'setup' && (
-            <motion.div key="setup" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }}>
+            <motion.div key="setup" initial={{ opacity: 0, y: 15, filter: 'blur(4px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, y: -15, filter: 'blur(4px)' }} transition={pageTransition}>
               <SetupView onStart={handleStartInterview} onCancel={cancelInterview} />
             </motion.div>
           )}
           {view === 'live' && (
-            <motion.div key="live" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="w-full flex justify-center">
+            <motion.div key="live" initial={{ opacity: 0, scale: 0.95, filter: 'blur(4px)' }} animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }} exit={{ opacity: 0, scale: 0.95, filter: 'blur(4px)' }} transition={pageTransition} className="w-full flex justify-center">
               <LiveInterviewView 
                  config={sessionParams} 
                  onComplete={handleCompleteInterview} 
@@ -153,7 +215,7 @@ export default function App() {
             </motion.div>
           )}
           {view === 'results' && currentSession && user && (
-            <motion.div key="results" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }}>
+            <motion.div key="results" initial={{ opacity: 0, y: 15, filter: 'blur(4px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, y: -15, filter: 'blur(4px)' }} transition={pageTransition}>
               <ResultsView 
                  session={currentSession} 
                  onRetake={() => setView('setup')} 
@@ -203,6 +265,7 @@ export default function App() {
                                  });
                              }
                              
+                             dbUser.loginStreak = 7; // Mock streak for presentation
                              usersDB[user.email].user = dbUser;
                              localStorage.setItem('usersDB', JSON.stringify(usersDB));
                              setUser(dbUser);
@@ -213,13 +276,38 @@ export default function App() {
             </motion.div>
           )}
           {view === 'bank' && (
-            <motion.div key="bank" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }}>
+            <motion.div key="bank" initial={{ opacity: 0, y: 15, filter: 'blur(4px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, y: -15, filter: 'blur(4px)' }} transition={pageTransition}>
               <QuestionBankView onNavigate={setView} />
             </motion.div>
           )}
           {view === 'history' && user && (
-            <motion.div key="history" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }}>
+            <motion.div key="history" initial={{ opacity: 0, y: 15, filter: 'blur(4px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, y: -15, filter: 'blur(4px)' }} transition={pageTransition}>
               <HistoryView user={user} onNavigate={setView} />
+            </motion.div>
+          )}
+          {view === 'simulation' && user && (
+            <motion.div key="simulation" initial={{ opacity: 0, y: 15, filter: 'blur(4px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, y: -15, filter: 'blur(4px)' }} transition={pageTransition}>
+              <SimulationView onNavigate={setView} />
+            </motion.div>
+          )}
+          {view === 'certificate' && user && (
+            <motion.div key="certificate" initial={{ opacity: 0, scale: 0.95, filter: 'blur(4px)' }} animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }} exit={{ opacity: 0, scale: 0.95, filter: 'blur(4px)' }} transition={pageTransition}>
+              <CertificateView user={user} onNavigate={setView} />
+            </motion.div>
+          )}
+          {view === 'suggestions' && user && (
+            <motion.div key="suggestions" initial={{ opacity: 0, scale: 0.95, filter: 'blur(4px)' }} animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }} exit={{ opacity: 0, scale: 0.95, filter: 'blur(4px)' }} transition={pageTransition}>
+              <SuggestionsView user={user} onNavigate={setView} />
+            </motion.div>
+          )}
+          {view === 'learner' && user && (
+            <motion.div key="learner" initial={{ opacity: 0, scale: 0.95, filter: 'blur(4px)' }} animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }} exit={{ opacity: 0, scale: 0.95, filter: 'blur(4px)' }} transition={pageTransition}>
+              <LearnerView onNavigate={setView} />
+            </motion.div>
+          )}
+          {view === 'security' && user && (
+            <motion.div key="security" initial={{ opacity: 0, scale: 0.95, filter: 'blur(4px)' }} animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }} exit={{ opacity: 0, scale: 0.95, filter: 'blur(4px)' }} transition={pageTransition}>
+              <SecurityView onNavigate={setView} />
             </motion.div>
           )}
         </AnimatePresence>

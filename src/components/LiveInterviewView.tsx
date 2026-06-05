@@ -41,6 +41,7 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
   const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const transcriptTextareaRef = useRef<HTMLTextAreaElement>(null);
   const liveTranscriptEndRef = useRef<HTMLDivElement>(null);
+  const visualizerCanvasRef = useRef<HTMLCanvasElement>(null);
   
   const recognitionRef = useRef<any>(null);
   const selectedVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
@@ -67,27 +68,21 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
     if (selectedVoiceRef.current) return selectedVoiceRef.current;
     
     const voices = window.speechSynthesis.getVoices();
-    const goodVoices = voices.filter(v => 
-      v.lang.startsWith('en') && 
-      (v.name.includes('Microsoft David') ||
-       v.name.includes('Microsoft Mark') ||
-       v.name.includes('Microsoft Zira') ||
-       v.name.includes('Google US English') ||
-       v.name.includes('Google UK English') ||
-       v.name.includes('Premium') ||
-       v.name.includes('Samantha') ||
-       v.name.includes('Natural') ||
-       v.name.includes('Neural'))
-    );
+    if (voices.length === 0) return null;
     
-    if (goodVoices.length > 0) {
-      // Randomly pick one of the high-quality voices
-      const randomChoice = goodVoices[Math.floor(Math.random() * goodVoices.length)];
-      selectedVoiceRef.current = randomChoice;
-      return randomChoice;
-    }
-    
-    return voices.find(v => v.lang.startsWith('en')) || voices[0];
+    const findVoice = (keywords: string[]) => voices.find(v => v.lang.startsWith('en') && keywords.some(k => v.name.toLowerCase().includes(k.toLowerCase())));
+
+    const bestVoice = 
+      findVoice(['Natural', 'Neural', 'Aria', 'Guy', 'Jenny']) || // Edge Natural Voices
+      findVoice(['Google US English', 'Google UK English Female']) || // Chrome defaults
+      findVoice(['Samantha', 'Alex', 'Daniel']) || // MacOS premium
+      findVoice(['Microsoft Zira', 'Microsoft David', 'Microsoft Mark']) || // Windows local
+      voices.find(v => v.lang.startsWith('en-US')) || 
+      voices.find(v => v.lang.startsWith('en')) || 
+      voices[0];
+      
+    selectedVoiceRef.current = bestVoice;
+    return bestVoice;
   };
 
   const stopSpeech = () => {
@@ -152,7 +147,7 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
             
             // Ensure volume is up
             utterance.volume = 1.0;
-            utterance.rate = 0.95; // Slightly faster to sound natural
+            utterance.rate = 1.0; // Normal rate for clearer articulation
             utterance.pitch = 1.0;
             
             let fallbackTimeout: NodeJS.Timeout;
@@ -203,6 +198,112 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
       speechSynthesis.onvoiceschanged = loadVoices;
     }
   }, []);
+
+  // Audio Visualizer
+  useEffect(() => {
+    let stream: MediaStream | null = null;
+    let audioContext: AudioContext | null = null;
+    let analyser: AnalyserNode | null = null;
+    let source: MediaStreamAudioSourceNode | null = null;
+    let animationFrameId: number;
+    let isActive = true;
+
+    const initAudio = async () => {
+      // Setup visualizer if mic is active and we are ready to listen
+      if (!isMicOn || isThinking || isSpeaking) {
+         // Clear canvas if inactive
+         if (visualizerCanvasRef.current) {
+             const ctx = visualizerCanvasRef.current.getContext('2d');
+             if (ctx) ctx.clearRect(0, 0, visualizerCanvasRef.current.width, visualizerCanvasRef.current.height);
+         }
+         return;
+      }
+      
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        if (!isActive) {
+           stream.getTracks().forEach(track => track.stop());
+           return;
+        }
+
+        audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 64; // Small fftSize gives a jagged, clear waveform for voice
+        
+        source = audioContext.createMediaStreamSource(stream);
+        source.connect(analyser);
+
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+
+        const draw = () => {
+          if (!isActive) return;
+          animationFrameId = requestAnimationFrame(draw);
+          
+          const canvas = visualizerCanvasRef.current;
+          if (!canvas || !analyser) return;
+
+          const canvasCtx = canvas.getContext('2d');
+          if (!canvasCtx) return;
+
+          const WIDTH = canvas.width;
+          const HEIGHT = canvas.height;
+
+          analyser.getByteTimeDomainData(dataArray);
+
+          canvasCtx.clearRect(0, 0, WIDTH, HEIGHT);
+          canvasCtx.lineWidth = 2;
+          canvasCtx.strokeStyle = 'rgb(96, 165, 250)'; // Tailwind blue-400
+          canvasCtx.beginPath();
+
+          const sliceWidth = WIDTH * 1.0 / bufferLength;
+          let x = 0;
+
+          // Compute max to slightly scale the visualization when loud
+          let maxVal = 0;
+          for (let i = 0; i < bufferLength; i++) {
+              let v = Math.abs((dataArray[i] / 128.0) - 1);
+              if (v > maxVal) maxVal = v;
+          }
+          
+          // Make sure it doesn't clip too hard
+          const scale = maxVal > 0.8 ? 0.8 / maxVal : 1;
+
+          for (let i = 0; i < bufferLength; i++) {
+            const v = dataArray[i] / 128.0;
+            // Center it and scale
+            const y = HEIGHT / 2 + ((v - 1) * scale * HEIGHT);
+
+            if (i === 0) {
+              canvasCtx.moveTo(x, y);
+            } else {
+              canvasCtx.lineTo(x, y);
+            }
+
+            x += sliceWidth;
+          }
+
+          canvasCtx.lineTo(WIDTH, HEIGHT / 2);
+          canvasCtx.stroke();
+        };
+
+        draw();
+
+      } catch (err) {
+        console.warn("Could not start visualizer", err);
+      }
+    };
+
+    initAudio();
+
+    return () => {
+      isActive = false;
+      if (animationFrameId) cancelAnimationFrame(animationFrameId);
+      if (source) source.disconnect();
+      if (audioContext && audioContext.state !== 'closed') audioContext.close();
+      if (stream) stream.getTracks().forEach(track => track.stop());
+    };
+  }, [isMicOn, isThinking, isSpeaking]);
 
   // Initial greeting and first question
   const hasFetchedInitialRef = useRef(false);
@@ -298,11 +399,11 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
     if (isMicOn && answerText.trim() && !isThinking) {
       if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
       silenceTimerRef.current = setTimeout(() => {
-         // Auto submit when user gives > 10 seconds of silence and mic is ON
+         // Auto submit when user gives > 5 seconds of silence and mic is ON
          if (!isThinkingRef.current && answerTextRef.current.trim().length > 5) { // Ensure they actually said something substantial
              handleSubmit();
          }
-      }, 10000);
+      }, 5000);
     }
     return () => {
       if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
@@ -666,9 +767,12 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
              
              {/* Active Mic Indicator overlay on webcam */}
              {isMicOn && !isThinking && !isSpeaking && (
-                 <div className="absolute bottom-5 right-5 flex items-center gap-2 bg-slate-900/80 backdrop-blur-md px-4 py-2 rounded-full border border-slate-700/50">
-                     <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-                     <span className="text-xs font-bold text-white tracking-widest uppercase">Rec</span>
+                 <div className="absolute bottom-5 right-5 flex items-center gap-3 bg-slate-900/80 backdrop-blur-md px-4 py-2 rounded-full border border-slate-700/50">
+                     <canvas ref={visualizerCanvasRef} width={60} height={20} className="opacity-80" />
+                     <div className="flex items-center gap-2 border-l border-slate-700 w-full pl-3">
+                        <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                        <span className="text-xs font-bold text-white tracking-widest uppercase">Rec</span>
+                     </div>
                  </div>
              )}
           </div>

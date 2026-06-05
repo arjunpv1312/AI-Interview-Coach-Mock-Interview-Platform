@@ -1,9 +1,10 @@
 import React, { useMemo } from 'react';
 import { User } from '../types';
-import { PlayCircle, History, BookOpen, Video, Target, Clock, Building, FileText, ExternalLink, Lightbulb } from 'lucide-react';
+import { PlayCircle, History, BookOpen, Video, Target, Clock, Building, FileText, ExternalLink, Lightbulb, Brain, Sparkles } from 'lucide-react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
 } from 'recharts';
+import { Badges } from './Badges';
 import { Logo } from './Logo';
 import { mockQuestions } from '../data';
 
@@ -42,6 +43,16 @@ export function DashboardView({ user, onNavigate }: DashboardViewProps) {
     return q.tips?.[tipIndex] || "Consistent practice is key.";
   }, []);
 
+  const getRankInfo = (interviews: number) => {
+    if (interviews < 5) return { level: 1, rank: 'Novice', next: 'Apprentice', max: 5, current: interviews, color: 'text-slate-400', bg: 'bg-slate-400' };
+    if (interviews < 13) return { level: 2, rank: 'Apprentice', next: 'Professional', max: 13, current: interviews, color: 'text-blue-400', bg: 'bg-blue-400' };
+    if (interviews < 20) return { level: 3, rank: 'Professional', next: 'Expert', max: 20, current: interviews, color: 'text-purple-400', bg: 'bg-purple-400' };
+    if (interviews < 50) return { level: 4, rank: 'Expert', next: 'Master', max: 50, current: interviews, color: 'text-rose-400', bg: 'bg-rose-400' };
+    return { level: 5, rank: 'Master', next: 'Grandmaster', max: 100, current: Math.min(interviews, 100), color: 'text-amber-400', bg: 'bg-amber-400' }; 
+  };
+
+  const rankInfo = getRankInfo(user.totalInterviews);
+
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500">
       
@@ -69,6 +80,29 @@ export function DashboardView({ user, onNavigate }: DashboardViewProps) {
         </div>
       </div>
 
+      {/* Rank Progress */}
+      <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-xl p-6">
+        <div className="flex justify-between items-end mb-2">
+          <div>
+            <div className="text-sm text-slate-400 font-medium uppercase tracking-wider mb-1">Professional Rank</div>
+            <div className={`text-2xl font-bold flex items-center gap-2 ${rankInfo.color}`}>
+              Level {rankInfo.level}: {rankInfo.rank}
+            </div>
+          </div>
+          <div className="text-sm font-medium text-slate-400 text-right">
+            <span className="text-white font-bold">{rankInfo.current}</span> / {rankInfo.max} 
+            <span className="hidden sm:inline"> Interviews to {rankInfo.next}</span>
+            <span className="sm:hidden"> to Next</span>
+          </div>
+        </div>
+        <div className="h-3 w-full bg-slate-800 rounded-full overflow-hidden mt-4 shadow-inner">
+          <div 
+            className={`h-full rounded-full transition-all duration-1000 ${rankInfo.bg}`}
+            style={{ width: `${(rankInfo.current / rankInfo.max) * 100}%` }}
+          ></div>
+        </div>
+      </div>
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard icon={<Video className="text-purple-400" />} title="Mock Interviews" value={user.totalInterviews.toString()} />
@@ -76,6 +110,8 @@ export function DashboardView({ user, onNavigate }: DashboardViewProps) {
         <StatCard icon={<Clock className="text-emerald-400" />} title="Time Practiced" value={formatTimeSpent(user.timeSpentSeconds)} />
         <StatCard icon={<Building className="text-amber-400" />} title="Companies" value={user.companiesInterviewed ? user.companiesInterviewed.length.toString() : "0"} />
       </div>
+
+      <Badges user={user} onNavigate={onNavigate} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
@@ -134,6 +170,32 @@ export function DashboardView({ user, onNavigate }: DashboardViewProps) {
           </button>
 
           <button 
+             onClick={() => onNavigate('suggestions')}
+             className="flex items-center gap-3 p-4 rounded-xl border border-indigo-500/30 bg-indigo-500/10 hover:bg-slate-800 hover:border-indigo-500/50 transition-all text-left group"
+          >
+            <div className="p-2 rounded-lg bg-indigo-500/20 text-indigo-400 group-hover:scale-110 transition-transform">
+              <Sparkles size={24} />
+            </div>
+            <div>
+              <div className="font-medium text-slate-200">AI Career Coach</div>
+              <div className="text-sm text-slate-400">Get personalized performance insights</div>
+            </div>
+          </button>
+
+          <button 
+             onClick={() => onNavigate('learner')}
+             className="flex items-center gap-3 p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-slate-800 hover:border-emerald-500/50 transition-all text-left group"
+          >
+            <div className="p-2 rounded-lg bg-emerald-500/20 text-emerald-400 group-hover:scale-110 transition-transform">
+              <Brain size={24} />
+            </div>
+            <div>
+              <div className="font-medium text-slate-200">Auto-Learner Hub</div>
+              <div className="text-sm text-slate-400">Auto-generate new resources & trends</div>
+            </div>
+          </button>
+          
+          <button 
              onClick={() => onNavigate('history')}
              className="flex items-center gap-3 p-4 rounded-xl border border-slate-700 bg-slate-800/50 hover:bg-slate-800 hover:border-purple-500/50 transition-all text-left group"
           >
@@ -143,6 +205,19 @@ export function DashboardView({ user, onNavigate }: DashboardViewProps) {
             <div>
               <div className="font-medium text-slate-200">View History</div>
               <div className="text-sm text-slate-400">Analyze past performance</div>
+            </div>
+          </button>
+
+          <button 
+            onClick={() => onNavigate('simulation')}
+            className="flex items-center gap-3 p-4 rounded-xl border border-slate-700 bg-slate-800/50 hover:bg-slate-800 hover:border-indigo-500/50 transition-all text-left group"
+          >
+            <div className="p-2 rounded-lg bg-indigo-500/20 text-indigo-400 group-hover:scale-110 transition-transform">
+              <Brain size={24} />
+            </div>
+            <div>
+              <div className="font-medium text-slate-200">Mock Simulation</div>
+              <div className="text-sm text-slate-400">Generate persona questions</div>
             </div>
           </button>
 

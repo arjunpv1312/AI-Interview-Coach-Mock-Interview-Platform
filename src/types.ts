@@ -21,6 +21,8 @@ export interface User {
   timeSpentSeconds?: number;
   companiesInterviewed?: string[];
   pastSessions?: PastSession[];
+  loginStreak?: number;
+  themePreference?: 'default' | 'midnight' | 'forest' | 'sunset';
 }
 
 export interface Question {
@@ -59,4 +61,4 @@ export interface InterviewSession {
   };
 }
 
-export type ViewState = 'auth' | 'dashboard' | 'setup' | 'live' | 'results' | 'bank' | 'history';
+export type ViewState = 'auth' | 'dashboard' | 'setup' | 'live' | 'results' | 'bank' | 'history' | 'simulation' | 'certificate' | 'suggestions' | 'learner' | 'security';

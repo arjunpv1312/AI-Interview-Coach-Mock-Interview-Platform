@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
+import { apiManager } from './src/lib/ApiManager';
 
 async function startServer() {
   const app = express();
@@ -13,22 +14,24 @@ async function startServer() {
   app.post('/api/interact', async (req, res) => {
     try {
       const { company, role, history } = req.body;
-      const apiKey = process.env.GEMINI_API_KEY;
+      const apiKey = apiManager.getCurrentKey();
       if (!apiKey) {
         return res.json({ text: "I'm sorry, but I cannot assist you right now. The Gemini API Key is missing from your server configuration. Please add it to continue the interview." });
       }
 
-      const ai = new GoogleGenAI({ apiKey });
+      const ai = new GoogleGenAI({ 
+         apiKey
+      });
       
       let chatPrompt = `You are a strict, highly technical interviewer at ${company} interviewing a candidate for the "${role}" position.
-Your responses must be spoken-word conversational and concise (1-3 sentences maximum).
+Your responses must be spoken-word conversational, VERY concise (1 or 2 sentences maximum), and MUST BE COMPLETELY IN ENGLISH.
 
 Crucial Instructions:
 1. FOCUS ON DEPTH: Ask practical, highly technical questions, including coding logic, system design, data structures, or deeply specialized aspects of the ${role} at ${company}. Don't ask generic questions.
-2. ADAPTIVE: If the candidate answers well, immediately pivot to a harder follow-up or a completely new complex technical topic.
-3. CONVERSATIONAL: Do not use markdown, lists, or asterisks (like *smiles*). Pure spoken text only.
-4. PROBE: If they give a superficial answer, ask them to explain the inner workings or edge cases. If they get stuck, give a tiny hint and push them to think.
-5. NO LONG SPEECHES: The user must do the talking. Keep your prompts short.
+2. ADAPTIVE: If the candidate answers well, pivot to a harder follow-up.
+3. CONVERSATIONAL: Pure spoken text only. No markdown, lists, or asterisks (like *smiles*). NEVER write code blocks.
+4. PROBE: If they give a superficial answer, ask them to explain the inner workings or edge cases.
+5. EXTREMELY BRIEF: Keep your prompts under 40 words total. The user must do the talking.
 
 Conversation so far:
 `;
@@ -59,17 +62,67 @@ Conversation so far:
       
       const errString = String(error) + " " + JSON.stringify(error, Object.getOwnPropertyNames(error));
       if (errString.includes('429') && errString.includes('Quota')) {
-         fallbackText = "I apologize, but we have reached our API rate limit. Please wait for about a minute and try answering again.";
+         apiManager.nextKey();
+         fallbackText = "Our AI system is currently handling a maximum load. We are dynamically re-routing resources and switching nodes... Please wait up to 60 seconds and submit your response again.";
       }
 
       res.json({ text: fallbackText });
     }
   });
 
+  // Simulate specific questions without chatting
+  app.post('/api/simulate-questions', async (req, res) => {
+    try {
+      const { company, role, experience } = req.body;
+      const apiKey = apiManager.getCurrentKey();
+      if (!apiKey) {
+        return res.status(500).json({ error: "Missing Gemini API Key." });
+      }
+
+      const ai = new GoogleGenAI({ 
+        apiKey
+      });
+      
+      let prompt = `You are an expert technical recruiter and hiring manager at ${company}. Generate exactly 5 custom, high-quality interview questions for a ${role} position (Experience level: ${experience} years).
+The questions must be highly specific to the technologies and domain of ${company} and the day-to-day work of a ${role}. 
+Do not include any introductory or concluding text. 
+Return ONLY a JSON array of 5 strings.
+Example: ["Question 1", "Question 2", "Question 3", "Question 4", "Question 5"]`;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+        config: {
+            temperature: 0.7,
+        }
+      });
+
+      let text = response.text || '';
+      // Attempt to parse JSON
+      try {
+        const jsonMatch = text.match(/\[.*\]/s);
+        if (jsonMatch) {
+            const rawQuestions = JSON.parse(jsonMatch[0]);
+            return res.json({ questions: rawQuestions.slice(0, 5) });
+        }
+      } catch(e) {
+         // fallback
+      }
+      
+      // Fallback if parsing fails
+      const fallbackQuestions = text.split('\n').filter(l => l.trim().length > 10).map(l => l.replace(/^[\d\.\-\*]\s*/, '').trim()).slice(0, 5);
+      res.json({ questions: fallbackQuestions });
+      
+    } catch (error) {
+      console.error('Gemini Generate Simulation Error:', error);
+      res.status(500).json({ error: 'Failed to communicate with AI' });
+    }
+  });
+
   app.post('/api/evaluate', async (req, res) => {
     try {
       const { company, role, history } = req.body;
-      const apiKey = process.env.GEMINI_API_KEY;
+      const apiKey = apiManager.getCurrentKey();
       if (!apiKey) {
         return res.json({
           crackProbability: "Needs Work",
@@ -83,7 +136,9 @@ Conversation so far:
         });
       }
 
-      const ai = new GoogleGenAI({ apiKey });
+      const ai = new GoogleGenAI({ 
+        apiKey
+      });
       
       let chatPrompt = `Analyze this interview transcript for a ${role} at ${company}.
 Evaluate the candidate thoroughly based on the conversation.
@@ -141,7 +196,8 @@ Transcript:
       const errString = String(error) + " " + JSON.stringify(error, Object.getOwnPropertyNames(error));
       let summaryText = `We couldn't fully evaluate your performance due to a server error.`;
       if (errString.includes('429') && errString.includes('Quota')) {
-          summaryText = "We couldn't fully evaluate your performance because we hit the API rate limit. Please try again later.";
+          apiManager.nextKey();
+          summaryText = "We are currently operating at maximum capacity. We have switched API nodes in the background. Please try submitting your evaluation again.";
       }
 
       res.json({
@@ -154,6 +210,110 @@ Transcript:
         improvements: ["Ensure stable network connection.", "Try another mock interview session."],
         studyTopics: ["System Design Fundamentals", "Data Structures & Algorithms", "Mock Interview Practice"]
       });
+    }
+  });
+
+  app.post('/api/insights', async (req, res) => {
+    try {
+      const { userDetails, historyStr } = req.body;
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) throw new Error("API key not configured");
+      
+      const ai = new GoogleGenAI({ 
+        apiKey 
+      });
+
+      const prompt = `You are an expert career coach and technical interviewer analyzing a candidate's overall progress.
+      
+Candidate Profile:
+${userDetails}
+
+Summary of Past Sessions:
+${historyStr}
+
+Based on this data, provide a highly personalized and professional overall performance analysis.
+Respond ONLY in JSON format with the following keys:
+- strengths: array of strings (3-4 technical or communication strengths)
+- weaknesses: array of strings (3-4 specific areas needing improvement)
+- studyPlan: array of objects with keys: "topic" (string), "reason" (string), "actionableSteps" (string) (Provide 3 key areas of study)
+- overallAdvice: string (A solid paradigm-shifting piece of advice for their career)`;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt
+      });
+      
+      let responseText = response.text || "";
+      let parsedResponse;
+      try {
+        const jsonMatch = responseText.match(/```(?:json)?\n([\s\S]*?)\n```/) || responseText.match(/{[\s\S]*}/);
+        const jsonText = jsonMatch ? (Array.isArray(jsonMatch) && jsonMatch[1] ? jsonMatch[1] : jsonMatch[0]) : responseText;
+        parsedResponse = JSON.parse(jsonText);
+      } catch (e) {
+        parsedResponse = {
+           strengths: ["Shows dedication to practice"],
+           weaknesses: ["Needs more consistent interview data"],
+           studyPlan: [{topic: "General Interviewing", reason: "Need more data", actionableSteps: "Continue doing mock sessions."}],
+           overallAdvice: "Keep practicing consistently to unlock tailored insights."
+        };
+      }
+      res.json(parsedResponse);
+    } catch (err: any) {
+      console.error("Insights error", err);
+      res.json({
+         strengths: ["System detected dedication"],
+         weaknesses: ["Not enough data due to error"],
+         studyPlan: [{topic: "General Practice", reason: "API Error", actionableSteps: "Try again later."}],
+         overallAdvice: "We experienced a technical hiccup. Keep pushing forward and try refreshing later."
+      });
+    }
+  });
+
+  app.post('/api/learner', async (req, res) => {
+    try {
+      const { topic } = req.body;
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) throw new Error("API key not configured");
+      
+      const ai = new GoogleGenAI({ 
+        apiKey 
+      });
+
+      const prompt = `You are an expert tech lead and automated course generator. Provide the absolute latest industry trends, algorithms, and practices regarding: ${topic || 'General Software Engineering Interviews'}.
+Create an educational module auto-updated with recent methods.
+Respond ONLY in JSON format:
+{
+  "title": "Module Title",
+  "lastUpdated": "Today's Date",
+  "trends": ["trend1", "trend2"],
+  "resources": [{"name": "Resource source", "url": "url if known, or text"}],
+  "newQuestions": [{"question": "Q1", "concept": "what it tests"}]
+}`;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt
+      });
+      
+      let responseText = response.text || "";
+      let parsedResponse;
+      try {
+        const jsonMatch = responseText.match(/```(?:json)?\n([\s\S]*?)\n```/) || responseText.match(/{[\s\S]*}/);
+        const jsonText = jsonMatch ? (Array.isArray(jsonMatch) && jsonMatch[1] ? jsonMatch[1] : jsonMatch[0]) : responseText;
+        parsedResponse = JSON.parse(jsonText);
+      } catch (e) {
+        parsedResponse = {
+           title: "Latest in " + (topic || "Tech"),
+           lastUpdated: new Date().toLocaleDateString(),
+           trends: ["AI Coding Assistants", "System Design for Scale"],
+           resources: [{name: "Google Tech Blog", url: "#"}],
+           newQuestions: [{question: "How do you design a distributed cache?", concept: "Caching Strategies"}]
+        };
+      }
+      res.json(parsedResponse);
+    } catch (err: any) {
+      console.error("Learner error", err);
+      res.status(500).json({ error: "Failed to generate learning module" });
     }
   });
 
