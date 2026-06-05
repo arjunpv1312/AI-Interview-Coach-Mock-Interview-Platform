@@ -82,16 +82,17 @@ export function DashboardView({ user, onNavigate }: DashboardViewProps) {
         {/* Chart */}
         <div className="lg:col-span-2 bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-xl p-6 flex flex-col">
           <h2 className="text-lg font-semibold text-white mb-6">Score Improvement</h2>
-          <div className="flex-1 min-h-[16rem]">
+          <div className="flex-1 min-h-[250px] w-full h-full relative">
             {user.totalInterviews === 0 || !user.scoreHistory || user.scoreHistory.length === 0 ? (
-              <div className="w-full h-full flex flex-col items-center justify-center border-2 border-dashed border-slate-700/50 rounded-xl text-slate-500">
+              <div className="absolute inset-0 flex flex-col items-center justify-center border-2 border-dashed border-slate-700/50 rounded-xl text-slate-500">
                 <Target className="mb-2 text-slate-600" size={32} />
                 <p>No interview data yet</p>
                 <p className="text-sm">Complete your first mock interview to see stats!</p>
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={user.scoreHistory.map((score, i) => ({ name: `Attempt ${i + 1}`, score }))}>
+              <div className="absolute inset-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={user.scoreHistory.map((score, i) => ({ name: `Attempt ${i + 1}`, score }))}>
                   <defs>
                     <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4}/>
@@ -108,6 +109,7 @@ export function DashboardView({ user, onNavigate }: DashboardViewProps) {
                   <Area type="monotone" dataKey="score" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorScore)" activeDot={{ r: 6, fill: '#3b82f6', strokeWidth: 0 }} />
                 </AreaChart>
               </ResponsiveContainer>
+              </div>
             )}
           </div>
         </div>
