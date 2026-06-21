@@ -1,6 +1,7 @@
 import React from 'react';
 import { User } from '../types';
 import { PlayCircle, History, BookOpen, Video, Target, Clock, Building, FileText, ExternalLink, Lightbulb, Brain, Sparkles, Calendar as CalendarIcon } from 'lucide-react';
+import { motion } from 'motion/react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
 } from 'recharts';
@@ -67,7 +68,7 @@ export function DashboardView({ user, onNavigate, onUpdateUser }: DashboardViewP
       {/* Progress & Goals */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Rank Progress */}
-        <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-xl p-6">
+        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-xl p-6">
           <div className="flex justify-between items-end mb-2">
             <div>
               <div className="text-sm text-slate-400 font-medium uppercase tracking-wider mb-1">Professional Rank</div>
@@ -87,7 +88,7 @@ export function DashboardView({ user, onNavigate, onUpdateUser }: DashboardViewP
               style={{ width: `${(rankInfo.current / rankInfo.max) * 100}%` }}
             ></div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Daily Goal Tracker */}
         <DailyGoalTracker user={user} onUpdateGoal={(goal) => onUpdateUser?.({ dailyGoal: goal })} />
@@ -106,7 +107,7 @@ export function DashboardView({ user, onNavigate, onUpdateUser }: DashboardViewP
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Chart */}
-        <div className="lg:col-span-2 bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-xl p-6 flex flex-col">
+        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2 }} className="lg:col-span-2 bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-xl p-6 flex flex-col">
           <h2 className="text-lg font-semibold text-white mb-6">Score Improvement</h2>
           <div className="flex-1 min-h-[250px] w-full h-full relative">
             {user.totalInterviews === 0 || !user.scoreHistory || user.scoreHistory.length === 0 ? (
@@ -138,12 +139,17 @@ export function DashboardView({ user, onNavigate, onUpdateUser }: DashboardViewP
               </div>
             )}
           </div>
-        </div>
+        </motion.div>
 
         {/* Actions & Meet */}
         <div className="flex flex-col gap-6">
             {/* Quick Actions */}
-            <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-xl p-6 flex flex-col gap-4 flex-1">
+            <motion.div 
+               initial={{ opacity: 0, x: 20 }} 
+               animate={{ opacity: 1, x: 0 }} 
+               transition={{ delay: 0.3 }}
+               className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-xl p-6 flex flex-col gap-4 flex-1"
+            >
               <h2 className="text-lg font-semibold text-white mb-2">Quick Actions</h2>
           
           <button 
@@ -242,7 +248,7 @@ export function DashboardView({ user, onNavigate, onUpdateUser }: DashboardViewP
             <ExternalLink size={18} className="text-slate-500 group-hover:text-blue-400 transition-colors" />
           </a>
           
-        </div>
+        </motion.div>
         
         {/* Pro Tips Sidebar */}
         <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-xl p-6 flex flex-col gap-4 relative overflow-hidden">
@@ -287,14 +293,21 @@ export function DashboardView({ user, onNavigate, onUpdateUser }: DashboardViewP
 
 function StatCard({ icon, title, value }: { icon: React.ReactNode, title: string, value: string }) {
   return (
-    <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-xl p-5 flex items-center gap-4">
-      <div className="p-3 bg-slate-800 rounded-lg">
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      whileHover={{ y: -2, scale: 1.02 }}
+      transition={{ type: 'spring', stiffness: 300 }}
+      className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-xl p-5 flex items-center gap-4 hover:border-slate-700 hover:bg-slate-800/80 cursor-default"
+    >
+      <div className="p-3 bg-slate-800 rounded-lg shadow-sm">
         {icon}
       </div>
       <div>
         <div className="text-sm text-slate-400 font-medium">{title}</div>
-        <div className="text-2xl font-bold text-white mt-0.5">{value}</div>
+        <div className="text-2xl font-bold text-white mt-0.5 tracking-tight">{value}</div>
       </div>
-    </div>
+    </motion.div>
   )
 }
