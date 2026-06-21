@@ -28,7 +28,14 @@ export const mockQuestions: Question[] = [
 export const COMPANIES = [
   'Google', 'Microsoft', 'Amazon', 'Meta', 'Apple', 'Netflix',
   'Zoho', 'OpenAI', 'Stripe', 'Airbnb', 'Uber', 'Spotify',
-  'Tesla', 'Salesforce', 'IBM', 'Oracle', 'Intel', 'Atlassian'
+  'Tesla', 'Salesforce', 'IBM', 'Oracle', 'Intel', 'Atlassian',
+  'LinkedIn', 'Twitter', 'Snapchat', 'Pinterest', 'Reddit', 'ByteDance',
+  'TCS', 'Infosys', 'Wipro', 'HCL', 'Tech Mahindra', 'Cognizant',
+  'Accenture', 'Capgemini', 'Deloitte', 'PwC', 'EY', 'KPMG',
+  'Goldman Sachs', 'Morgan Stanley', 'JPMorgan Chase', 'Bloomberg',
+  'Robinhood', 'Coinbase', 'Plaid', 'Square', 'PayPal',
+  'Shopify', 'Etsy', 'Zillow', 'DoorDash', 'Instacart',
+  'Slack', 'Zoom', 'Dropbox', 'Box', 'Twilio'
 ];
 
 export const ROLES = [
@@ -37,5 +44,10 @@ export const ROLES = [
   'Data Analyst', 'Machine Learning Engineer', 'AI Engineer',
   'Product Manager', 'UX/UI Designer', 'DevOps Engineer',
   'Site Reliability Engineer', 'Cloud Architect', 'Security Engineer',
-  'QA Engineer', 'Database Administrator', 'Engineering Manager'
+  'QA Engineer', 'Database Administrator', 'Engineering Manager',
+  'Systems Engineer', 'Network Engineer', 'Hardware Engineer',
+  'Game Developer', 'AR/VR Developer', 'Blockchain/Web3 Developer',
+  'Data Engineer', 'Business Analyst', 'Technical Program Manager',
+  'Software Architect', 'Solutions Architect', 'Sales Engineer',
+  'IT Support/Helpdesk', 'Technical Writer', 'Scrum Master'
 ];

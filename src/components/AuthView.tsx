@@ -9,6 +9,7 @@ interface AuthViewProps {
 
 export function AuthView({ onLogin }: AuthViewProps) {
   const [isLogin, setIsLogin] = useState(true);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -16,13 +17,26 @@ export function AuthView({ onLogin }: AuthViewProps) {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [fullName, setFullName] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
     
     // Simulate DB with localStorage
     const usersDB = JSON.parse(localStorage.getItem('usersDB') || '{}');
+
+    if (isForgotPassword) {
+      if (usersDB[email]) {
+        // Send mail (simulated)
+        setSuccess(`Password reset instructions successfully sent to ${email}. Please check your inbox.`);
+        setTimeout(() => setIsForgotPassword(false), 3000);
+      } else {
+        setError('No account found with that email address.');
+      }
+      return;
+    }
     
     if (isLogin) {
       if (usersDB[email]) {
@@ -78,7 +92,11 @@ export function AuthView({ onLogin }: AuthViewProps) {
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-white">Interview Copilot</h1>
           <p className="text-slate-400 mt-2 text-center text-sm">
-            {isLogin ? 'Sign in to track your interview performance.' : 'Create an account to start practicing.'}
+            {isForgotPassword 
+              ? 'Reset your password.' 
+              : isLogin 
+                ? 'Sign in to track your interview performance.' 
+                : 'Create an account to start practicing.'}
           </p>
         </div>
 
@@ -89,8 +107,15 @@ export function AuthView({ onLogin }: AuthViewProps) {
           </div>
         )}
 
+        {success && (
+          <div className="mb-6 p-4 bg-emerald-500/10 border border-emerald-500/50 rounded-xl flex items-center gap-3 text-emerald-400 text-sm">
+            <AlertCircle size={18} className="shrink-0" />
+            <p>{success}</p>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
-          {!isLogin && (
+          {!isLogin && !isForgotPassword && (
             <div className="animate-in slide-in-from-top-2 duration-300">
               <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Full Name</label>
               <input
@@ -116,6 +141,7 @@ export function AuthView({ onLogin }: AuthViewProps) {
             />
           </div>
 
+          {!isForgotPassword && (
           <div className="space-y-1">
             <div className="flex items-center justify-between">
                 <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Password</label>
@@ -123,11 +149,7 @@ export function AuthView({ onLogin }: AuthViewProps) {
                     <button 
                         type="button" 
                         onClick={() => {
-                            if (!email) {
-                                setError('Please enter your email to reset password');
-                            } else {
-                                setError(`Password reset instructions sent to ${email}`);
-                            }
+                            setIsForgotPassword(true);
                         }}
                         className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
                     >
@@ -154,8 +176,9 @@ export function AuthView({ onLogin }: AuthViewProps) {
               </button>
             </div>
           </div>
+          )}
 
-          {!isLogin && (
+          {!isLogin && !isForgotPassword && (
           <div className="animate-in slide-in-from-top-2 duration-300">
             <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Repeat Password</label>
             <div className="relative">
@@ -183,22 +206,29 @@ export function AuthView({ onLogin }: AuthViewProps) {
             type="submit"
             className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors mt-6 shadow-lg shadow-blue-500/20"
           >
-            {isLogin ? <LogIn size={20} /> : <UserPlus size={20} />}
-            {isLogin ? 'Sign In' : 'Create Account'}
+            {!isForgotPassword && (isLogin ? <LogIn size={20} /> : <UserPlus size={20} />)}
+            {isForgotPassword ? 'Reset Password' : isLogin ? 'Sign In' : 'Create Account'}
           </button>
         </form>
 
         <div className="mt-6 text-center">
           <button
             onClick={() => {
-                setIsLogin(!isLogin);
-                setError('');
-                setPassword('');
-                setConfirmPassword('');
+                if (isForgotPassword) {
+                    setIsForgotPassword(false);
+                } else {
+                    setIsLogin(!isLogin);
+                    setError('');
+                    setSuccess('');
+                    setPassword('');
+                    setConfirmPassword('');
+                }
             }}
             className="text-sm text-slate-400 hover:text-blue-400 transition-colors"
           >
-            {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
+            {isForgotPassword 
+                ? 'Back to login' 
+                : isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
           </button>
         </div>
       </div>

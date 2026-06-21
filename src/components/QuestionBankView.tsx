@@ -24,10 +24,17 @@ export function QuestionBankView({ onNavigate }: { onNavigate: (v: string) => vo
         <div>
           <h1 className="text-3xl font-bold text-white flex items-center gap-3">
             <BookOpen className="text-blue-500" />
-            Interview Question Bank
+            Study Scenarios
           </h1>
-          <p className="text-slate-400 mt-1">Browse, filter, and practice real interview questions.</p>
+          <p className="text-slate-400 mt-1">Browse and study concepts for your upcoming mock interviews.</p>
         </div>
+        <button 
+           onClick={() => onNavigate('setup')}
+           className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-colors shadow-lg shadow-blue-500/20"
+        >
+           <PlayCircle size={20} />
+           Start a Mock Interview
+        </button>
       </div>
 
       {/* Filters and Search Search */}
@@ -85,17 +92,10 @@ export function QuestionBankView({ onNavigate }: { onNavigate: (v: string) => vo
                   <h3 className="text-lg font-semibold text-white mb-6 flex-1 group-hover:text-blue-400 transition-colors">{q.text}</h3>
                   
                   <div className="flex items-center justify-between mt-auto">
-                    <div className="text-sm text-slate-500">{q.timesAsked} practices</div>
+                    <div className="text-sm text-slate-500">{q.timesAsked} views</div>
                     <div className="flex gap-2">
                         <button className="p-2 hover:bg-slate-800 text-slate-400 hover:text-white rounded-lg transition-colors" title="Save for later">
                             <BookmarkPlus size={20} />
-                        </button>
-                        <button 
-                            onClick={() => onNavigate('setup')}
-                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg transition-colors"
-                        >
-                            <PlayCircle size={18} />
-                            Practice
                         </button>
                     </div>
                   </div>

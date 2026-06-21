@@ -17,6 +17,7 @@ import { CertificateView } from './components/CertificateView';
 import { SuggestionsView } from './components/SuggestionsView';
 import { LearnerView } from './components/LearnerView';
 import { SecurityView } from './components/SecurityView';
+import { PublicCertificateView } from './components/PublicCertificateView';
 import { Logo } from './components/Logo';
 import { UserCircle, LogOut, Globe, FileText, Palette, Sparkles, Cpu, ShieldCheck } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
@@ -32,8 +33,13 @@ export default function App() {
 
   const handleThemeChange = (theme: 'default' | 'midnight' | 'forest' | 'sunset') => {
      document.documentElement.dataset.theme = theme;
+     handleUpdateUser({ themePreference: theme });
+     setThemeDropdown(false);
+  };
+
+  const handleUpdateUser = (updatedProps: Partial<User>) => {
      if (user) {
-         const updatedUser = { ...user, themePreference: theme };
+         const updatedUser = { ...user, ...updatedProps };
          setUser(updatedUser);
          const usersDB = JSON.parse(localStorage.getItem('usersDB') || '{}');
          if (usersDB[user.email]) {
@@ -41,12 +47,17 @@ export default function App() {
              localStorage.setItem('usersDB', JSON.stringify(usersDB));
          }
      }
-     setThemeDropdown(false);
   };
 
   React.useEffect(() => {
     document.documentElement.classList.remove('light');
     localStorage.setItem('theme', 'dark');
+    
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('cert')) {
+      setView('public-cert');
+      return;
+    }
     
     const authDataStr = localStorage.getItem('authData');
     if (authDataStr) {
@@ -114,7 +125,7 @@ export default function App() {
       </div>
 
       {/* Navigation */}
-      {(view !== 'live' && view !== 'auth') && (
+      {(view !== 'live' && view !== 'auth' && view !== 'public-cert') && (
         <nav className="border-b border-slate-800 bg-slate-950/50 backdrop-blur-lg sticky top-0 z-50 transition-colors relative">
           <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         <div className="flex items-center gap-3 cursor-pointer" onClick={() => setView('dashboard')}>
@@ -126,7 +137,7 @@ export default function App() {
             
             <div className="flex items-center gap-6">
               <button onClick={() => setView('dashboard')} className={`text-sm font-medium transition-colors ${view === 'dashboard' ? 'text-blue-400' : 'text-slate-400 hover:text-slate-100'}`}>Dashboard</button>
-              <button onClick={() => setView('bank')} className={`text-sm font-medium transition-colors ${view === 'bank' ? 'text-blue-400' : 'text-slate-400 hover:text-slate-100'}`}>Question Bank</button>
+              <button onClick={() => setView('bank')} className={`text-sm font-medium transition-colors ${view === 'bank' ? 'text-blue-400' : 'text-slate-400 hover:text-slate-100'}`}>Study Scenarios</button>
               <button onClick={() => setView('history')} className={`text-sm font-medium transition-colors ${view === 'history' ? 'text-blue-400' : 'text-slate-400 hover:text-slate-100'}`}>History</button>
               <button onClick={() => setView('suggestions')} className={`text-sm font-medium transition-colors flex items-center gap-1 ${view === 'suggestions' ? 'text-blue-400' : 'text-slate-400 hover:text-slate-100'}`}><Sparkles size={14} /> Insights</button>
               <button onClick={() => setView('learner')} className={`text-sm font-medium transition-colors flex items-center gap-1 ${view === 'learner' ? 'text-emerald-400' : 'text-slate-400 hover:text-slate-100'}`}><Cpu size={14} /> Learner AI</button>
@@ -184,7 +195,7 @@ export default function App() {
       )}
 
       {/* Main Content Area */}
-      <main className={`px-4 sm:px-6 py-8 relative ${view === 'live' ? 'py-4' : ''} ${view === 'auth' ? 'py-0 px-0' : ''} flex-1 flex flex-col`}>
+      <main className={`px-4 sm:px-6 py-8 relative ${view === 'live' ? 'py-4' : ''} ${(view === 'auth' || view === 'public-cert') ? 'py-0 px-0' : ''} flex-1 flex flex-col`}>
         <AnimatePresence mode="wait">
           {view === 'auth' && (
             <motion.div key="auth" initial={{ opacity: 0, scale: 0.98, filter: 'blur(4px)' }} animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }} exit={{ opacity: 0, scale: 0.98, filter: 'blur(4px)' }} transition={pageTransition} className="flex-1 flex flex-col">
@@ -195,9 +206,14 @@ export default function App() {
               }} />
             </motion.div>
           )}
+          {view === 'public-cert' && (
+            <motion.div key="public-cert" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={pageTransition} className="flex-1 flex flex-col">
+              <PublicCertificateView />
+            </motion.div>
+          )}
           {view === 'dashboard' && user && (
             <motion.div key="dashboard" initial={{ opacity: 0, y: 15, filter: 'blur(4px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, y: -15, filter: 'blur(4px)' }} transition={pageTransition}>
-              <DashboardView user={user} onNavigate={setView} />
+              <DashboardView user={user} onNavigate={setView} onUpdateUser={handleUpdateUser} />
             </motion.div>
           )}
           {view === 'setup' && (

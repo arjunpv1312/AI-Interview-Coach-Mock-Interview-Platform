@@ -80,7 +80,16 @@ export function CertificateView({ user, onNavigate }: CertificateViewProps) {
 
   const handleShareLinkedIn = () => {
     if(!selectedCert) return;
-    const text = encodeURIComponent(`I just unlocked the "${selectedCert.title}" certificate on Interview Copilot!`);
+    
+    // Generate cert payload for public viewing
+    const certPayload = btoa(JSON.stringify({
+        name: user.fullName,
+        title: selectedCert.title,
+        date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+    }));
+    
+    const certUrl = `${window.location.origin}/?cert=${certPayload}`;
+    const text = encodeURIComponent(`I just unlocked the "${selectedCert.title}" certificate on Interview Copilot! Check it out here: ${certUrl}`);
     window.open(`https://www.linkedin.com/feed/?shareActive=true&text=${text}`, '_blank');
   };
 
@@ -247,13 +256,6 @@ export function CertificateView({ user, onNavigate }: CertificateViewProps) {
                       <div className="font-serif text-2xl text-slate-300 italic px-4 border-b border-slate-700 pb-1 font-semibold">
                         Interview Copilot
                       </div>
-                    </div>
-                  </div>
-                  
-                  {/* Disclaimer embedded directly in output */}
-                  <div className="text-left mt-8 flex gap-2">
-                    <div className="text-slate-500/70 border border-slate-700/50 bg-slate-800/20 px-4 py-2 rounded-lg text-xs w-full text-center">
-                      Disclaimer: This is an unofficial certificate of achievement generated for simulated practice on Interview Copilot. We are not an officially verified educational institution or legal entity, and this document holds no legal binding status.
                     </div>
                   </div>
 

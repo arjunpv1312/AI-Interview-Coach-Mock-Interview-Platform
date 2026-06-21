@@ -3,13 +3,17 @@ export class ApiManager {
   public currentIndex: number = 0;
 
   constructor() {
+    const defaultKeys: string[] = [];
+    
     const baseKey = process.env.GEMINI_API_KEY || '';
     const extraKeys = process.env.EXTRA_GEMINI_API_KEYS || '';
     
-    this.keys = [baseKey, ...extraKeys.split(',')].map(k => k.trim()).filter(Boolean);
+    const userKeys = [baseKey, ...extraKeys.split(',')].map(k => k.trim()).filter(Boolean);
+    
+    this.keys = Array.from(new Set([...userKeys, ...defaultKeys]));
     
     if (this.keys.length === 0) {
-       console.warn('ApiManager: No API keys found in GEMINI_API_KEY or EXTRA_GEMINI_API_KEYS');
+       console.warn('ApiManager: No API keys found');
     }
   }
 
@@ -18,10 +22,26 @@ export class ApiManager {
     return this.keys[this.currentIndex];
   }
 
+  public removeCurrentKey(): void {
+    if (this.keys.length > 0) {
+      console.warn(`ApiManager: Removing invalid API key (starts with ${this.keys[this.currentIndex].substring(0, 8)}...)`);
+      this.keys.splice(this.currentIndex, 1);
+      if (this.keys.length > 0) {
+        this.currentIndex = this.currentIndex % this.keys.length;
+      } else {
+        this.currentIndex = 0;
+      }
+    }
+  }
+
   public nextKey(): string {
     if (this.keys.length === 0) return '';
     this.currentIndex = (this.currentIndex + 1) % this.keys.length;
     return this.keys[this.currentIndex];
+  }
+
+  public getKeysLength(): number {
+    return this.keys.length;
   }
 
   public get customFetch() {

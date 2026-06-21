@@ -1,19 +1,21 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { User } from '../types';
-import { PlayCircle, History, BookOpen, Video, Target, Clock, Building, FileText, ExternalLink, Lightbulb, Brain, Sparkles } from 'lucide-react';
+import { PlayCircle, History, BookOpen, Video, Target, Clock, Building, FileText, ExternalLink, Lightbulb, Brain, Sparkles, Calendar as CalendarIcon } from 'lucide-react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
 } from 'recharts';
 import { Badges } from './Badges';
 import { Logo } from './Logo';
-import { mockQuestions } from '../data';
+import { CalendarWidget } from './CalendarWidget';
+import { DailyGoalTracker } from './DailyGoalTracker';
 
 interface DashboardViewProps {
   user: User;
   onNavigate: (view: any) => void;
+  onUpdateUser?: (props: Partial<User>) => void;
 }
 
-export function DashboardView({ user, onNavigate }: DashboardViewProps) {
+export function DashboardView({ user, onNavigate, onUpdateUser }: DashboardViewProps) {
   const formatTimeSpent = (seconds?: number) => {
     if (!seconds) return "0m";
     const h = Math.floor(seconds / 3600);
@@ -24,24 +26,6 @@ export function DashboardView({ user, onNavigate }: DashboardViewProps) {
     }
     return `${m}m`;
   };
-
-  const dailyTip = useMemo(() => {
-    const today = new Date().toDateString();
-    let hash = 0;
-    for (let i = 0; i < today.length; i++) {
-        hash = today.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    
-    // Fallbacks just in case
-    const questionsWithTips = mockQuestions.filter(q => q.tips && q.tips.length > 0);
-    if (questionsWithTips.length === 0) return "Practice makes perfect. Keep doing mock interviews to build muscle memory.";
-    
-    const index = Math.abs(hash) % questionsWithTips.length;
-    const q = questionsWithTips[index];
-    const tipIndex = Math.abs(hash) % (q.tips?.length || 1);
-    
-    return q.tips?.[tipIndex] || "Consistent practice is key.";
-  }, []);
 
   const getRankInfo = (interviews: number) => {
     if (interviews < 5) return { level: 1, rank: 'Novice', next: 'Apprentice', max: 5, current: interviews, color: 'text-slate-400', bg: 'bg-slate-400' };
@@ -80,27 +64,33 @@ export function DashboardView({ user, onNavigate }: DashboardViewProps) {
         </div>
       </div>
 
-      {/* Rank Progress */}
-      <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-xl p-6">
-        <div className="flex justify-between items-end mb-2">
-          <div>
-            <div className="text-sm text-slate-400 font-medium uppercase tracking-wider mb-1">Professional Rank</div>
-            <div className={`text-2xl font-bold flex items-center gap-2 ${rankInfo.color}`}>
-              Level {rankInfo.level}: {rankInfo.rank}
+      {/* Progress & Goals */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Rank Progress */}
+        <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-xl p-6">
+          <div className="flex justify-between items-end mb-2">
+            <div>
+              <div className="text-sm text-slate-400 font-medium uppercase tracking-wider mb-1">Professional Rank</div>
+              <div className={`text-2xl font-bold flex items-center gap-2 ${rankInfo.color}`}>
+                Level {rankInfo.level}: {rankInfo.rank}
+              </div>
+            </div>
+            <div className="text-sm font-medium text-slate-400 text-right">
+              <span className="text-white font-bold">{rankInfo.current}</span> / {rankInfo.max} 
+              <span className="hidden sm:inline"> Interviews to {rankInfo.next}</span>
+              <span className="sm:hidden"> to Next</span>
             </div>
           </div>
-          <div className="text-sm font-medium text-slate-400 text-right">
-            <span className="text-white font-bold">{rankInfo.current}</span> / {rankInfo.max} 
-            <span className="hidden sm:inline"> Interviews to {rankInfo.next}</span>
-            <span className="sm:hidden"> to Next</span>
+          <div className="h-3 w-full bg-slate-800 rounded-full overflow-hidden mt-4 shadow-inner">
+            <div 
+              className={`h-full rounded-full transition-all duration-1000 ${rankInfo.bg}`}
+              style={{ width: `${(rankInfo.current / rankInfo.max) * 100}%` }}
+            ></div>
           </div>
         </div>
-        <div className="h-3 w-full bg-slate-800 rounded-full overflow-hidden mt-4 shadow-inner">
-          <div 
-            className={`h-full rounded-full transition-all duration-1000 ${rankInfo.bg}`}
-            style={{ width: `${(rankInfo.current / rankInfo.max) * 100}%` }}
-          ></div>
-        </div>
+
+        {/* Daily Goal Tracker */}
+        <DailyGoalTracker user={user} onUpdateGoal={(goal) => onUpdateUser?.({ dailyGoal: goal })} />
       </div>
 
       {/* Stats Cards */}
@@ -230,7 +220,7 @@ export function DashboardView({ user, onNavigate }: DashboardViewProps) {
             </div>
             <div>
               <div className="font-medium text-slate-200">Practice Questions</div>
-              <div className="text-sm text-slate-400">Browse the question bank</div>
+              <div className="text-sm text-slate-400">Browse study scenarios</div>
             </div>
           </button>
           
@@ -254,22 +244,43 @@ export function DashboardView({ user, onNavigate }: DashboardViewProps) {
           
         </div>
         
-        {/* Daily Tip */}
+        {/* Pro Tips Sidebar */}
         <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-xl p-6 flex flex-col gap-4 relative overflow-hidden">
           <div className="absolute top-0 right-0 p-6 opacity-5 pointer-events-none">
             <Lightbulb size={120} />
           </div>
           <div className="flex items-center gap-2 text-amber-400 mb-2 relative z-10">
             <Lightbulb size={20} />
-            <h2 className="text-lg font-semibold text-white">Daily Interview Tip</h2>
+            <h2 className="text-lg font-semibold text-white">Pro Tips</h2>
           </div>
-          <p className="text-slate-300 italic relative z-10 leading-relaxed border-l-2 border-amber-500/50 pl-4 py-1">
-            "{dailyTip}"
-          </p>
+          <div className="space-y-4 relative z-10">
+            {[
+              "Structure your answers using the STAR method: Situation, Task, Action, Result.",
+              "Always listen carefully to the question before jumping into the solution.",
+              "Don't be afraid to ask clarifying questions if the prompt is ambiguous.",
+              "In technical interviews, think out loud so the interviewer can follow your logic.",
+              "Prepare a few thoughtful questions to ask the interviewer at the end of the session.",
+              "Focus on the 'I' rather than 'We' when discussing your specific contributions to a project.",
+              "Take a deep breath and stay calm. It's perfectly fine to pause and gather your thoughts.",
+            ].sort(() => 0.5 - Math.random()).slice(0, 3).map((tip, index) => (
+              <p key={index} className="text-slate-300 text-sm italic leading-relaxed border-l-2 border-amber-500/50 pl-4 py-1">
+                "{tip}"
+              </p>
+            ))}
+          </div>
         </div>
         
         </div>
       </div>
+
+      <div className="mt-8">
+         <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+            <CalendarIcon className="text-blue-400" />
+            Interview Schedule
+         </h2>
+         <CalendarWidget user={user} onNavigate={onNavigate} />
+      </div>
+
     </div>
   );
 }

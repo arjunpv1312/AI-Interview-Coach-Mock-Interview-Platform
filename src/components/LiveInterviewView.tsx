@@ -3,7 +3,7 @@ import Webcam from 'react-webcam';
 import { ChatMessage } from '../types';
 import { Logo } from './Logo';
 import { Clock, Video, Mic, CheckCircle2, Building2, BrainCircuit, RefreshCcw, Camera, HelpCircle, Send } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface LiveInterviewViewProps {
   config: any;
@@ -27,6 +27,7 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
   const [turnCount, setTurnCount] = useState(1);
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
+  const [errorToast, setErrorToast] = useState('');
   
   const [isMicOn, setIsMicOn] = useState(true);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -178,7 +179,8 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
             
             // Fallback timeout in case onend never fires (e.g. browser bug or silent fail)
             // Assumes ~150 words per minute -> ~2.5 words per second -> ~0.4s per word
-            const estimatedDuration = Math.max(2500, sentence.split(' ').length * 400 + 1500);
+            // Using very generous multipliers (700ms per word + 5s) to avoid premature cutoffs
+            const estimatedDuration = Math.max(5000, sentence.split(/\s+/).length * 800 + 5000);
             fallbackTimeout = setTimeout(() => {
                 console.warn("SpeechSynthesis onend timeout, moving to next sentence.");
                 window.speechSynthesis.cancel();
@@ -322,11 +324,17 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
             data = JSON.parse(textResponse);
         } catch (e) {
             console.error("Failed to parse API response", textResponse);
-            data = { text: "I'm having trouble connecting to the server. Let's gracefully move on or try again." };
+            data = { error: true, text: "I'm having trouble connecting to the server. Let's gracefully move on or try again." };
         }
         
-        const aiMessage = { role: 'interviewer' as const, text: data.text || data.error || "Network error" };
-        setHistory(prev => [...prev, aiMessage]);
+        if (data.error || data.text?.includes("having a technical issue") || data.text?.includes("maximum load") || data.text?.includes("API Key is missing")) {
+             // Don't append to history if it's an error message
+             setErrorToast(data.text || "API connection failed. Retrying...");
+             setTimeout(() => setErrorToast(''), 5000);
+        } else {
+            const aiMessage = { role: 'interviewer' as const, text: data.text || "Network error" };
+            setHistory(prev => [...prev, aiMessage]);
+        }
         setIsThinking(false);
 
         speakText(data.text);
@@ -347,13 +355,25 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
     // Detect gender once voice is loaded
     const voice = getSelectedVoice();
     if (voice) {
-        if (voice.name.toLowerCase().includes('male') || voice.name.toLowerCase().includes('david') || voice.name.toLowerCase().includes('mark')) {
+        const name = voice.name.toLowerCase();
+        if (name.includes('male') || name.includes('david') || name.includes('mark') || name.includes('guy') || name.includes('alex') || name.includes('daniel') || name.includes('brian') || name.includes('george')) {
             setVoiceGender('male');
         } else {
             setVoiceGender('female');
         }
     }
   }, [getSelectedVoice]);
+  
+  // Anti-garbage-collection & Chrome timeout workaround for SpeechSynthesis
+  useEffect(() => {
+    const interval = setInterval(() => {
+        if (window.speechSynthesis && window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
+            window.speechSynthesis.pause();
+            window.speechSynthesis.resume();
+        }
+    }, 10000);
+    return () => clearInterval(interval);
+  }, []);
   
   useEffect(() => {
       // Auto-scroll transcript textarea
@@ -456,10 +476,16 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
       recognitionRef.current.onerror = (event: any) => {
         isRecognizingRef.current = false;
         if (event.error !== 'no-speech' && event.error !== 'aborted') {
-            console.error("Speech recognition error", event.error);
+            console.warn("Speech recognition error", event.error);
         }
         if (event.error === 'not-allowed' || event.error === 'audio-capture') {
             setIsMicOn(false);
+        }
+        // If network error, pause a bit before we might try again later,
+        // or just let the user know and disable mic to prevent spamming
+        if (event.error === 'network') {
+            setIsMicOn(false);
+            console.error("Speech recognition network error: Please check your internet connection or browser settings.");
         }
       };
 
@@ -531,13 +557,21 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
             data = JSON.parse(textResponse);
         } catch (e) {
             console.error("Failed to parse API response", textResponse);
-            data = { text: "I'm having trouble connecting right now." };
+            data = { error: true, text: "I'm having trouble connecting right now. Please check your network and try again." };
         }
         
-        const aiMessage = { role: 'interviewer' as const, text: data.text || data.error || "Network error" };
-        setHistory(prev => [...prev, aiMessage]);
+        if (data.error || data.text?.includes("having a technical issue") || data.text?.includes("maximum load") || data.text?.includes("API Key is missing")) {
+            // Remove the candidate's last message so they can try answering it again without duplicate history
+            setHistory(prev => prev.slice(0, -1));
+            setAnswerText(finalAnswer);
+            setErrorToast(data.text || "API connection failed. Please try speaking again.");
+            setTimeout(() => setErrorToast(''), 5000);
+        } else {
+            const aiMessage = { role: 'interviewer' as const, text: data.text || "Network error" };
+            setHistory(prev => [...prev, aiMessage]);
+        }
+        
         setIsThinking(false);
-
         speakText(data.text);
     } catch (e) {
         setIsThinking(false);
@@ -602,6 +636,14 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
             </button>
         </div>
       </div>
+
+      <AnimatePresence>
+        {errorToast && (
+            <motion.div initial={{opacity: 0, y: -10}} animate={{opacity: 1, y: 0}} exit={{opacity: 0, y: -10}} className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-center text-sm font-medium">
+                {errorToast}
+            </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Main Content Split */}
       <div className="flex-1 flex flex-col lg:flex-row gap-8 h-full pb-6">
@@ -820,13 +862,26 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
               ) : (
                 <div className="flex items-center gap-2 text-slate-500 font-semibold text-sm tracking-wide">
                   <div className="w-2 h-2 rounded-full bg-slate-500" />
-                  Microphone off
+                  Microphone off (Click to enable)
                 </div>
               )}
               
-              <div className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                 <span>Auto-submit 5s</span>
-                 <RefreshCcw size={14} className={answerText.trim() ? "animate-spin text-blue-400" : "opacity-50"} />
+              <div className="flex items-center gap-4">
+                  <button 
+                      onClick={() => setIsMicOn(!isMicOn)}
+                      disabled={isThinking || isSpeaking}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-widest border transition-colors ${
+                          isMicOn 
+                              ? 'bg-rose-500/10 text-rose-400 border-rose-500/30 hover:bg-rose-500/20' 
+                              : 'bg-slate-700/50 text-slate-300 border-slate-600 hover:bg-slate-700'
+                      }`}
+                  >
+                      {isMicOn ? 'Mute Mic' : 'Enable Mic'}
+                  </button>
+                  <div className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                     <span>Auto-submit 5s</span>
+                     <RefreshCcw size={14} className={answerText.trim() ? "animate-spin text-blue-400" : "opacity-50"} />
+                  </div>
               </div>
           </div>
         </div>

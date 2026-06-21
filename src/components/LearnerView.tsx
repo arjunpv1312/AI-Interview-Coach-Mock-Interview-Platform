@@ -83,6 +83,10 @@ export function LearnerView({ onNavigate }: LearnerViewProps) {
              </div>
              <p className="text-indigo-400 font-medium">Scraping latest knowledge and generating curriculum...</p>
           </motion.div>
+        ) : data?.error ? (
+          <motion.div key="error" initial={{opacity: 0}} animate={{opacity: 1}} className="bg-red-500/10 border border-red-500/20 p-6 rounded-2xl text-center">
+             <p className="text-red-400 font-medium">{data.error}</p>
+          </motion.div>
         ) : data ? (
           <motion.div key="content" initial={{opacity: 0, y: 20}} animate={{opacity: 1, y: 0}} className="space-y-6">
             

@@ -45,14 +45,19 @@ export function SetupView({ onStart, onCancel }: SetupViewProps) {
               <Building2 size={16} className="text-blue-400"/>
               Target Company
             </label>
-            <select 
-              className="w-full bg-slate-800 border-slate-700 text-white rounded-xl p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-              value={config.company}
-              onChange={e => setConfig({...config, company: e.target.value})}
-            >
-              <option value="" disabled>Select a company</option>
-              {COMPANIES.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
+            <div className="relative">
+              <select
+                className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all appearance-none cursor-pointer pr-10"
+                value={config.company}
+                onChange={e => setConfig({...config, company: e.target.value})}
+              >
+                <option value="" disabled>Select a company</option>
+                {COMPANIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <div className="absolute top-1/2 right-4 -translate-y-1/2 pointer-events-none text-slate-400">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+              </div>
+            </div>
           </div>
 
           <div className="space-y-3">
@@ -60,14 +65,19 @@ export function SetupView({ onStart, onCancel }: SetupViewProps) {
               <Briefcase size={16} className="text-purple-400"/>
               Target Role
             </label>
-            <select 
-              className="w-full bg-slate-800 border-slate-700 text-white rounded-xl p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-              value={config.role}
-              onChange={e => setConfig({...config, role: e.target.value})}
-            >
-              <option value="" disabled>Select a role</option>
-              {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-            </select>
+            <div className="relative">
+              <select
+                className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all appearance-none cursor-pointer pr-10"
+                value={config.role}
+                onChange={e => setConfig({...config, role: e.target.value})}
+              >
+                <option value="" disabled>Select a role</option>
+                {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+              </select>
+              <div className="absolute top-1/2 right-4 -translate-y-1/2 pointer-events-none text-slate-400">
+                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+              </div>
+            </div>
           </div>
         </div>
 

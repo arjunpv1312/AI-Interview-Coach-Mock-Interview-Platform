@@ -10,6 +10,14 @@ export interface PastSession {
   studyTopics?: string[];
 }
 
+export interface ScheduledSession {
+  id: string;
+  date: string;
+  company: string;
+  role: string;
+  type: string;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -21,7 +29,9 @@ export interface User {
   timeSpentSeconds?: number;
   companiesInterviewed?: string[];
   pastSessions?: PastSession[];
+  scheduledSessions?: ScheduledSession[];
   loginStreak?: number;
+  dailyGoal?: number;
   themePreference?: 'default' | 'midnight' | 'forest' | 'sunset';
 }
 
@@ -61,4 +71,4 @@ export interface InterviewSession {
   };
 }
 
-export type ViewState = 'auth' | 'dashboard' | 'setup' | 'live' | 'results' | 'bank' | 'history' | 'simulation' | 'certificate' | 'suggestions' | 'learner' | 'security';
+export type ViewState = 'auth' | 'dashboard' | 'setup' | 'live' | 'results' | 'bank' | 'history' | 'simulation' | 'certificate' | 'suggestions' | 'learner' | 'security' | 'public-cert';
