@@ -31,29 +31,52 @@ export function Badges({ user, onNavigate }: BadgesProps) {
     });
   }
 
-  // Badge 2: 13 Sessions
-  if (user.totalInterviews >= 13) {
+  // Badge 2: 10 Sessions
+  if (user.totalInterviews >= 10) {
     badges.push({
-      id: 'thirteen-sessions',
-      title: 'Dedicated Candidate',
-      description: 'Completed 13 interview sessions',
+      id: 'ten-sessions',
+      title: 'Interview Veteran',
+      description: 'Completed 10 interview sessions',
+      icon: <Award className="text-blue-400" size={24} />,
+      color: 'bg-blue-500/20 border-blue-500/50',
+      active: true
+    });
+  } else {
+    badges.push({
+      id: 'ten-sessions',
+      title: 'Interview Veteran',
+      description: 'Complete 10 interview sessions',
+      icon: <Award className="text-slate-500" size={24} />,
+      color: 'bg-slate-800/50 border-slate-700',
+      active: false,
+      progress: `${user.totalInterviews}/10`
+    });
+  }
+
+  // Badge 3: 7-Day Streak
+  const streak = user.loginStreak || 0;
+  if (streak >= 7) {
+    badges.push({
+      id: 'seven-day-streak',
+      title: '7-Day Streak',
+      description: 'Logged in for 7 consecutive days',
       icon: <Flame className="text-rose-500" size={24} />,
       color: 'bg-rose-500/20 border-rose-500/50',
       active: true
     });
   } else {
     badges.push({
-      id: 'thirteen-sessions',
-      title: 'Dedicated Candidate',
-      description: 'Complete 13 interview sessions',
+      id: 'seven-day-streak',
+      title: '7-Day Streak',
+      description: 'Log in for 7 consecutive days',
       icon: <Flame className="text-slate-500" size={24} />,
       color: 'bg-slate-800/50 border-slate-700',
       active: false,
-      progress: `${user.totalInterviews}/13`
+      progress: `${streak}/7`
     });
   }
 
-  // Badge 3: Improvement Streak
+  // Badge 4: Improvement Streak
   let hasImprovementStreak = false;
   if (user.scoreHistory && user.scoreHistory.length >= 2) {
     const lastTwo = user.scoreHistory.slice(-2);
@@ -105,7 +128,7 @@ export function Badges({ user, onNavigate }: BadgesProps) {
     });
   }
 
-  const hasCertificate = user.totalInterviews >= 13 || isTopPerformer || (user.loginStreak && user.loginStreak >= 7);
+  const hasCertificate = user.totalInterviews >= 10 || isTopPerformer || (user.loginStreak && user.loginStreak >= 7);
 
   return (
     <div className="bg-slate-900/40 border border-slate-700/50 rounded-2xl p-6 shadow-xl w-full">
@@ -128,7 +151,7 @@ export function Badges({ user, onNavigate }: BadgesProps) {
         )}
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         {badges.map(badge => (
           <div 
             key={badge.id}
