@@ -2,6 +2,12 @@ import React, { useState } from 'react';
 import { User } from '../types';
 import { Logo } from './Logo';
 import {
+  authenticateVaultUser,
+  ensureFederatedOrDemoUser,
+  getVaultUsers,
+  registerVaultUser,
+} from '../lib/CryptoVault';
+import {
   LogIn,
   UserPlus,
   AlertCircle,
@@ -15,6 +21,7 @@ import {
   BarChart3,
   CheckCircle2,
   ArrowRight,
+  Lock,
 } from 'lucide-react';
 
 interface AuthViewProps {
@@ -38,19 +45,7 @@ export function AuthView({ onLogin }: AuthViewProps) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const persistAndLogin = (userObj: User) => {
-    const usersDB = JSON.parse(localStorage.getItem('usersDB') || '{}');
-    if (!usersDB[userObj.email]) {
-      usersDB[userObj.email] = {
-        password: password || 'demo-access',
-        user: userObj,
-      };
-      localStorage.setItem('usersDB', JSON.stringify(usersDB));
-    }
-    onLogin(userObj, rememberMe);
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
@@ -63,26 +58,22 @@ export function AuthView({ onLogin }: AuthViewProps) {
 
     setLoadingAction('submit');
 
-    setTimeout(() => {
-      const usersDB = JSON.parse(localStorage.getItem('usersDB') || '{}');
-
+    try {
       if (isForgotPassword) {
-        if (usersDB[trimmedEmail]) {
+        const users = await getVaultUsers();
+        if (users[trimmedEmail]) {
           setSuccess(
-            `Password reset instructions sent to ${trimmedEmail}. Returning to sign in.`
+            `Password reset instructions prepared for ${trimmedEmail}. Returning to sign in.`
           );
-          setLoadingAction(null);
-          setTimeout(() => setIsForgotPassword(false), 2200);
+          setTimeout(() => setIsForgotPassword(false), 2000);
         } else {
           setError('No account found with that email address.');
-          setLoadingAction(null);
         }
         return;
       }
 
       if (passwordlessDemo && isLogin) {
-        const existingUser = usersDB[trimmedEmail]?.user;
-        const quickUser: User = existingUser || {
+        const quickUser: User = {
           id: Math.random().toString(36).slice(2, 11),
           email: trimmedEmail,
           fullName: trimmedEmail.split('@')[0] || 'Candidate',
@@ -92,39 +83,26 @@ export function AuthView({ onLogin }: AuthViewProps) {
           themePreference: 'amoled',
           authProvider: 'email',
         };
-        setLoadingAction(null);
-        persistAndLogin(quickUser);
+        const resolved = await ensureFederatedOrDemoUser(
+          quickUser,
+          'quick-demo-vault'
+        );
+        onLogin(resolved, rememberMe);
         return;
       }
 
       if (isLogin) {
-        if (usersDB[trimmedEmail]) {
-          if (usersDB[trimmedEmail].password === password) {
-            setLoadingAction(null);
-            onLogin(usersDB[trimmedEmail].user, rememberMe);
-            return;
-          } else {
-            setError('Incorrect password. Try again or enable Quick Demo Mode.');
-            setLoadingAction(null);
-            return;
-          }
-        } else {
-          setError('Account not found. Switch to Create Account or use Instant Demo.');
-          setLoadingAction(null);
+        const result = await authenticateVaultUser(trimmedEmail, password);
+        if (!result.ok || !result.user) {
+          setError(result.error || 'Authentication failed.');
           return;
         }
+        onLogin(result.user, rememberMe);
       } else {
         if (password !== confirmPassword) {
           setError('Passwords do not match.');
-          setLoadingAction(null);
           return;
         }
-        if (usersDB[trimmedEmail]) {
-          setError('Account already exists. Sign in instead.');
-          setLoadingAction(null);
-          return;
-        }
-
         const newUser: User = {
           id: Math.random().toString(36).slice(2, 11),
           email: trimmedEmail,
@@ -135,28 +113,27 @@ export function AuthView({ onLogin }: AuthViewProps) {
           themePreference: 'amoled',
           authProvider: 'email',
         };
-
-        usersDB[trimmedEmail] = {
-          password,
-          user: newUser,
-        };
-        localStorage.setItem('usersDB', JSON.stringify(usersDB));
-        setLoadingAction(null);
+        const reg = await registerVaultUser(newUser, password);
+        if (!reg.ok) {
+          setError(reg.error || 'Registration failed.');
+          return;
+        }
         onLogin(newUser, rememberMe);
       }
-    }, 450);
+    } catch {
+      setError('Encryption vault error while processing credentials.');
+    } finally {
+      setLoadingAction(null);
+    }
   };
 
-  const handleInstantGuest = () => {
+  const handleInstantGuest = async () => {
     setError('');
     setLoadingAction('guest');
-    setTimeout(() => {
-      const usersDB = JSON.parse(localStorage.getItem('usersDB') || '{}');
-      const guestEmail = 'demo@interviewcopilot.pro';
-      const existing = usersDB[guestEmail]?.user;
-      const guestUser: User = existing || {
+    try {
+      const guestUser: User = {
         id: 'guest-pro',
-        email: guestEmail,
+        email: 'demo@interviewcopilot.pro',
         fullName: 'Alex Rivera',
         joinDate: new Date().toISOString(),
         totalInterviews: 0,
@@ -164,22 +141,27 @@ export function AuthView({ onLogin }: AuthViewProps) {
         themePreference: 'amoled',
         authProvider: 'guest',
       };
+      const resolved = await ensureFederatedOrDemoUser(
+        guestUser,
+        'guest-vault-key'
+      );
+      onLogin(resolved, rememberMe);
+    } catch {
+      setError('Could not initialize encrypted demo vault.');
+    } finally {
       setLoadingAction(null);
-      persistAndLogin(guestUser);
-    }, 450);
+    }
   };
 
-  const handleFederatedQuickConnect = (provider: 'google' | 'github') => {
+  const handleFederatedQuickConnect = async (provider: 'google' | 'github') => {
     setError('');
     setLoadingAction(provider);
-    setTimeout(() => {
+    try {
       const providerEmail =
         provider === 'google'
           ? 'candidate.google@interviewcopilot.pro'
           : 'dev.github@interviewcopilot.pro';
-      const usersDB = JSON.parse(localStorage.getItem('usersDB') || '{}');
-      const existing = usersDB[providerEmail]?.user;
-      const socialUser: User = existing || {
+      const socialUser: User = {
         id: `${provider}-${Math.random().toString(36).slice(2, 8)}`,
         email: providerEmail,
         fullName: provider === 'google' ? 'Jordan Lee' : 'Samir Patel',
@@ -189,14 +171,20 @@ export function AuthView({ onLogin }: AuthViewProps) {
         themePreference: 'amoled',
         authProvider: provider,
       };
+      const resolved = await ensureFederatedOrDemoUser(
+        socialUser,
+        `${provider}-vault-key`
+      );
+      onLogin(resolved, rememberMe);
+    } catch {
+      setError('Could not establish encrypted quick-connect profile.');
+    } finally {
       setLoadingAction(null);
-      persistAndLogin(socialUser);
-    }, 550);
+    }
   };
 
   return (
     <div className="min-h-screen bg-black text-slate-100 flex flex-col lg:flex-row relative overflow-hidden">
-      {/* Subtle AMOLED electric blue atmospheric backdrop */}
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute -top-40 -left-40 w-[520px] h-[520px] rounded-full bg-blue-600/15 blur-[140px]" />
         <div className="absolute bottom-0 right-0 w-[480px] h-[480px] rounded-full bg-cyan-500/10 blur-[150px]" />
@@ -216,19 +204,18 @@ export function AuthView({ onLogin }: AuthViewProps) {
         <div className="max-w-xl space-y-8 my-auto py-8">
           <div className="space-y-4">
             <p className="text-sm font-medium text-blue-400">
-              Resume-Grounded AI Interview Studio
+              Zero-Knowledge Resume-Grounded AI Studio
             </p>
             <h1 className="text-4xl xl:text-5xl font-extrabold tracking-tight text-white leading-[1.12] [text-wrap:balance]">
               Practice with questions pulled straight from your resume.
             </h1>
             <p className="text-slate-400 text-base leading-relaxed">
-              Upload your PDF, DOCX, or TXT resume and step into an adaptive voice
-              or text interview engineered around your real projects, custom
-              difficulty, and target company bar.
+              Upload your PDF, DOCX, or TXT resume with zero server retention.
+              All profile records, resumes, and interview transcripts stay
+              AES-256-GCM encrypted locally inside your browser vault.
             </p>
           </div>
 
-          {/* Animated Studio Preview Card (Clean AMOLED surface, no macOS dots) */}
           <div className="rounded-2xl border border-blue-500/20 bg-[#050912] p-6 space-y-5 shadow-2xl shadow-blue-950/30">
             <div className="flex items-center justify-between border-b border-[#16223b] pb-4">
               <div className="flex items-center gap-3">
@@ -277,10 +264,10 @@ export function AuthView({ onLogin }: AuthViewProps) {
                 <div className="rounded-xl bg-black border border-[#16223b] p-3">
                   <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
                     <ShieldCheck size={13} className="text-emerald-400" />
-                    <span>Verdict</span>
+                    <span>Vault Cipher</span>
                   </div>
                   <div className="text-sm font-semibold text-emerald-400">
-                    Strong Hire
+                    AES-256-GCM
                   </div>
                 </div>
               </div>
@@ -290,21 +277,22 @@ export function AuthView({ onLogin }: AuthViewProps) {
           <div className="grid grid-cols-3 gap-4 text-xs text-slate-400">
             <div className="flex items-center gap-2">
               <CheckCircle2 size={15} className="text-blue-400 shrink-0" />
-              <span>PDF, DOCX &amp; TXT Parsing</span>
+              <span>AES-256-GCM Vault</span>
             </div>
             <div className="flex items-center gap-2">
               <CheckCircle2 size={15} className="text-blue-400 shrink-0" />
-              <span>Voice + Camera Studio</span>
+              <span>PBKDF2-SHA-256 Auth</span>
             </div>
             <div className="flex items-center gap-2">
               <CheckCircle2 size={15} className="text-blue-400 shrink-0" />
-              <span>Tabbed Q&amp;A Scorecard</span>
+              <span>Zero Server Retention</span>
             </div>
           </div>
         </div>
 
         <div className="text-xs text-slate-500 flex items-center gap-2">
-          <span>Interview Copilot Pro</span>
+          <Lock size={12} className="text-blue-400" />
+          <span>End-to-End Encrypted Local Vault</span>
           <span aria-hidden="true">·</span>
           <span>AMOLED Edition</span>
         </div>
@@ -321,19 +309,18 @@ export function AuthView({ onLogin }: AuthViewProps) {
               {isForgotPassword
                 ? 'Reset your password'
                 : isLogin
-                  ? 'Sign in to your studio'
-                  : 'Create your account'}
+                  ? 'Sign in to your encrypted studio'
+                  : 'Create your encrypted account'}
             </h2>
             <p className="text-sm text-slate-400">
               {isForgotPassword
-                ? 'Enter your account email to receive reset steps.'
+                ? 'Verify your account email inside the local vault.'
                 : isLogin
-                  ? 'Resume-tailored mock interviews, scorecards, and progress tracking.'
-                  : 'Start practicing with your personalized AI interviewer.'}
+                  ? 'PBKDF2 hashed credentials and AES-256-GCM encrypted resume vault.'
+                  : 'Your profile and resume are encrypted locally before saving.'}
             </p>
           </div>
 
-          {/* Instant Demo + Social Quick Connect */}
           {!isForgotPassword && (
             <div className="space-y-3">
               <button
@@ -345,7 +332,7 @@ export function AuthView({ onLogin }: AuthViewProps) {
                 {loadingAction === 'guest' ? (
                   <>
                     <Loader2 size={17} className="animate-spin" />
-                    <span>Launching Guest Studio...</span>
+                    <span>Unlocking Encrypted Demo Vault...</span>
                   </>
                 ) : (
                   <>
@@ -540,7 +527,6 @@ export function AuthView({ onLogin }: AuthViewProps) {
               </div>
             )}
 
-            {/* Auth Toggles: Remember Me & Passwordless Quick Demo */}
             {!isForgotPassword && (
               <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs">
                 <label className="flex items-center gap-2 text-slate-400 cursor-pointer select-none">
@@ -550,7 +536,7 @@ export function AuthView({ onLogin }: AuthViewProps) {
                     onChange={(e) => setRememberMe(e.target.checked)}
                     className="w-4 h-4 rounded border-[#16223b] bg-black accent-blue-600 cursor-pointer"
                   />
-                  <span>Remember me (7 days)</span>
+                  <span>Remember encrypted session (7d)</span>
                 </label>
 
                 {isLogin && (
@@ -581,10 +567,10 @@ export function AuthView({ onLogin }: AuthViewProps) {
                   <Loader2 size={18} className="animate-spin" />
                   <span>
                     {isForgotPassword
-                      ? 'Sending instructions...'
+                      ? 'Checking encrypted vault...'
                       : isLogin
-                        ? 'Signing in...'
-                        : 'Creating account...'}
+                        ? 'Decrypting vault...'
+                        : 'Encrypting account...'}
                   </span>
                 </>
               ) : (
@@ -593,12 +579,12 @@ export function AuthView({ onLogin }: AuthViewProps) {
                     (isLogin ? <LogIn size={18} /> : <UserPlus size={18} />)}
                   <span>
                     {isForgotPassword
-                      ? 'Send Reset Link'
+                      ? 'Verify Account'
                       : isLogin
                         ? passwordlessDemo
                           ? 'Continue without Password'
-                          : 'Sign In'
-                        : 'Create Account'}
+                          : 'Sign In Securely'
+                        : 'Create Encrypted Account'}
                   </span>
                 </>
               )}

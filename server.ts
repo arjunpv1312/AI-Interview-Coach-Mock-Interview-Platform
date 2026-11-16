@@ -5,6 +5,39 @@ import { GoogleGenAI, Type } from '@google/genai';
 import mammoth from 'mammoth';
 import { apiManager } from './src/lib/ApiManager';
 
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX_REQUESTS = 60;
+const ipRateMap = new Map<string, { count: number; resetAt: number }>();
+
+function sanitizeString(input: string): string {
+  return input
+    .replace(/\0/g, '')
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/javascript:/gi, '')
+    .trim();
+}
+
+function sanitizePayload(value: any, skipKeys = new Set(['base64Data'])): any {
+  if (typeof value === 'string') {
+    return sanitizeString(value);
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizePayload(item, skipKeys));
+  }
+  if (value && typeof value === 'object') {
+    const out: Record<string, any> = {};
+    for (const [k, v] of Object.entries(value)) {
+      if (skipKeys.has(k)) {
+        out[k] = v;
+      } else {
+        out[k] = sanitizePayload(v, skipKeys);
+      }
+    }
+    return out;
+  }
+  return value;
+}
+
 async function generateContentWithRetry(options: any) {
   let attempts = 0;
   const maxRetries = Math.max(4, apiManager.getKeysLength() * 3);
@@ -102,7 +135,7 @@ function formatResumeContext(resumeProfile: any): string {
     )
     .join('\n');
   return `
-CANDIDATE RESUME CONTEXT:
+CANDIDATE RESUME CONTEXT (EPHEMERAL SESSION ONLY):
 Name: ${resumeProfile.candidateName || 'Candidate'}
 Headline: ${resumeProfile.headline || 'N/A'}
 Experience Summary: ${resumeProfile.rawSummary || 'N/A'}
@@ -119,10 +152,129 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  app.disable('x-powered-by');
+  app.set('trust proxy', 1);
+
+  // Production HTTPS / TLS enforcement behind reverse proxy
+  app.use((req, res, next) => {
+    if (
+      process.env.NODE_ENV === 'production' &&
+      req.headers['x-forwarded-proto'] === 'http'
+    ) {
+      return res.redirect(301, `https://${req.headers.host}${req.originalUrl}`);
+    }
+    next();
+  });
+
+  // Strict HTTP & TLS Security Headers
+  app.use((_req, res, next) => {
+    res.setHeader(
+      'Strict-Transport-Security',
+      'max-age=31536000; includeSubDomains; preload'
+    );
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    res.setHeader(
+      'Permissions-Policy',
+      'camera=(self), microphone=(self), geolocation=(), payment=()'
+    );
+    res.setHeader('X-XSS-Protection', '0');
+    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+    res.setHeader(
+      'Content-Security-Policy',
+      [
+        "default-src 'self'",
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+        "font-src 'self' https://fonts.gstatic.com data:",
+        "img-src 'self' data: blob:",
+        "media-src 'self' blob:",
+        "connect-src 'self' ws: wss: https:",
+        "object-src 'none'",
+        "base-uri 'self'",
+      ].join('; ')
+    );
+    next();
+  });
+
   app.use(express.json({ limit: '15mb' }));
 
-  // Parse uploaded PDF / DOCX / TXT resumes via Gemini
+  // No-Store Cache Policy + Sliding-Window Rate Limiter + Input Sanitization on /api/*
+  app.use('/api', (req, res, next) => {
+    res.setHeader(
+      'Cache-Control',
+      'no-store, no-cache, must-revalidate, private'
+    );
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
+    const ip = req.ip || req.socket.remoteAddress || 'unknown';
+    const now = Date.now();
+    let entry = ipRateMap.get(ip);
+    if (!entry || now > entry.resetAt) {
+      entry = { count: 0, resetAt: now + RATE_LIMIT_WINDOW_MS };
+      ipRateMap.set(ip, entry);
+    }
+    entry.count++;
+
+    const remaining = Math.max(0, RATE_LIMIT_MAX_REQUESTS - entry.count);
+    res.setHeader('X-RateLimit-Limit', String(RATE_LIMIT_MAX_REQUESTS));
+    res.setHeader('X-RateLimit-Remaining', String(remaining));
+    res.setHeader('X-RateLimit-Reset', String(Math.ceil(entry.resetAt / 1000)));
+
+    if (entry.count > RATE_LIMIT_MAX_REQUESTS) {
+      const retryAfter = Math.ceil((entry.resetAt - now) / 1000);
+      res.setHeader('Retry-After', String(retryAfter));
+      return res.status(429).json({
+        error: 'Rate limit exceeded. Please wait before sending more requests.',
+      });
+    }
+
+    if (req.body && typeof req.body === 'object') {
+      req.body = sanitizePayload(req.body);
+    }
+
+    next();
+  });
+
+  // Live Security & Encryption Diagnostics Endpoint
+  app.get('/api/security-status', (req, res) => {
+    const ip = req.ip || req.socket.remoteAddress || 'unknown';
+    const entry = ipRateMap.get(ip);
+    const remaining = entry
+      ? Math.max(0, RATE_LIMIT_MAX_REQUESTS - entry.count)
+      : RATE_LIMIT_MAX_REQUESTS;
+
+    res.json({
+      tlsEncrypted:
+        Boolean(req.secure) || req.headers['x-forwarded-proto'] === 'https',
+      hstsEnabled: true,
+      cspEnabled: true,
+      noStoreApiCache: true,
+      zeroRetentionResumeProcessing: true,
+      inputSanitizationActive: true,
+      geminiServerProxied: true,
+      rateLimit: {
+        limit: RATE_LIMIT_MAX_REQUESTS,
+        remaining,
+        windowSeconds: RATE_LIMIT_WINDOW_MS / 1000,
+      },
+      headersActive: [
+        'Strict-Transport-Security',
+        'Content-Security-Policy',
+        'X-Content-Type-Options: nosniff',
+        'Referrer-Policy: no-referrer',
+        'Permissions-Policy',
+        'Cache-Control: no-store',
+      ],
+      checkedAt: new Date().toISOString(),
+    });
+  });
+
+  // Ephemeral Zero-Retention Resume Parser (never saved to disk or logged)
   app.post('/api/parse-resume', async (req, res) => {
+    let buffer: Buffer | null = null;
+    let extractedText = '';
     try {
       const { fileName, mimeType, base64Data, textContent } = req.body;
       const apiKey = apiManager.getCurrentKey();
@@ -133,29 +285,35 @@ async function startServer() {
         });
       }
 
-      let extractedText = (textContent || '').trim();
+      extractedText = (textContent || '').trim();
       const lowerName = (fileName || '').toLowerCase();
 
       if (!extractedText && base64Data) {
-        const buffer = Buffer.from(base64Data, 'base64');
+        if (typeof base64Data !== 'string' || base64Data.length > 14_000_000) {
+          return res.status(400).json({ error: 'Invalid or oversized file payload.' });
+        }
+        buffer = Buffer.from(base64Data, 'base64');
+        if (buffer.byteLength > 10 * 1024 * 1024) {
+          return res.status(400).json({ error: 'Resume exceeds 10 MB limit.' });
+        }
         if (
           lowerName.endsWith('.docx') ||
           mimeType ===
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
         ) {
           const result = await mammoth.extractRawText({ buffer });
-          extractedText = (result.value || '').trim();
+          extractedText = sanitizeString(result.value || '');
         } else if (
           lowerName.endsWith('.txt') ||
           mimeType?.startsWith('text/')
         ) {
-          extractedText = buffer.toString('utf-8').trim();
+          extractedText = sanitizeString(buffer.toString('utf-8'));
         }
       }
 
       const extractionPrompt = `You are an expert technical recruiter and engineering hiring manager.
 Analyze the candidate's resume thoroughly and extract structured, concrete details that a real interviewer would probe in the opening and technical rounds.
-Focus on real projects, specific technologies, architectural claims, metrics, and potential follow-up hooks (e.g., "Asked why they chose Redis over Memcached in Project X", "Probing latency optimization claims in Role Y").
+Focus on real projects, specific technologies, architectural claims, metrics, and potential follow-up hooks.
 Generate 4 specific "tailoredAngles" representing sharp, realistic interview questions derived directly from this resume.`;
 
       const isPdf =
@@ -267,12 +425,23 @@ Generate 4 specific "tailoredAngles" representing sharp, realistic interview que
         },
       });
     } catch (error: any) {
-      console.warn('Resume parse error:', error);
+      console.warn('Resume parse error:', error?.message || 'Processing failed');
       res.status(500).json({
         error:
           error?.message ||
           'Failed to analyze resume. Please try another PDF, DOCX, or TXT file.',
       });
+    } finally {
+      // Zero out ephemeral resume buffer and extracted text immediately
+      if (buffer) {
+        buffer.fill(0);
+        buffer = null;
+      }
+      extractedText = '';
+      if (req.body) {
+        req.body.base64Data = '';
+        req.body.textContent = '';
+      }
     }
   });
 
@@ -340,9 +509,10 @@ Conversation so far:
           chatPrompt += `${msg.role === 'interviewer' ? 'Interviewer' : 'Candidate'}: ${msg.text}\n`;
         });
       } else {
-        chatPrompt += hasResume && startWithResume
-          ? '(Start the interview: greet the candidate briefly by name if available, mention one specific project or role from their resume, and ask a sharp opening question about it.)\n'
-          : '(Start the interview: introduce yourself briefly and ask the first tailored question for the role.)\n';
+        chatPrompt +=
+          hasResume && startWithResume
+            ? '(Start the interview: greet the candidate briefly by name if available, mention one specific project or role from their resume, and ask a sharp opening question about it.)\n'
+            : '(Start the interview: introduce yourself briefly and ask the first tailored question for the role.)\n';
       }
 
       chatPrompt += `\nInterviewer:`;
@@ -358,7 +528,7 @@ Conversation so far:
 
       res.json({ text: response.text.trim() });
     } catch (error: any) {
-      console.warn('Error getting interaction:', error);
+      console.warn('Error getting interaction:', error?.message || 'Error');
       let fallbackText =
         "I'm having a technical issue processing that. Could you please repeat or rephrase your answer?";
 
@@ -430,7 +600,7 @@ Return ONLY a JSON array of 5 strings.`;
         .slice(0, 5);
       res.json({ questions: fallbackQuestions });
     } catch (error: any) {
-      console.warn('Gemini Generate Simulation Error:', error);
+      console.warn('Gemini Generate Simulation Error:', error?.message);
       res.status(500).json({ error: 'Failed to generate simulation questions.' });
     }
   });
@@ -566,7 +736,7 @@ Transcript:
       const parsed = safeJsonParse(response?.text || '', defaultReport);
       res.json({ ...defaultReport, ...parsed });
     } catch (error: any) {
-      console.warn('Error getting evaluation:', error);
+      console.warn('Error getting evaluation:', error?.message);
       res.json({
         crackProbability: 'Needs Work',
         overallScore: 0,
@@ -628,7 +798,7 @@ Respond ONLY in JSON format with:
       });
       res.json(parsed);
     } catch (err: any) {
-      console.warn('Insights error', err);
+      console.warn('Insights error', err?.message);
       res.json({
         strengths: ['Dedicated preparation'],
         weaknesses: ['Not enough session data'],
@@ -677,7 +847,7 @@ Respond ONLY in JSON format:
       });
       res.json(parsed);
     } catch (err: any) {
-      console.warn('Learner error', err);
+      console.warn('Learner error', err?.message);
       res.status(500).json({ error: 'Failed to generate learning module.' });
     }
   });
@@ -691,7 +861,7 @@ Respond ONLY in JSON format:
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
-    app.get('*', (req, res) => {
+    app.get('*', (_req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }

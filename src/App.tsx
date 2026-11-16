@@ -10,6 +10,14 @@ import {
   InterviewConfig,
   ThemeVariant,
 } from './types';
+import {
+  clearVaultSession,
+  getVaultSession,
+  getVaultUser,
+  initializeVault,
+  saveVaultSession,
+  updateVaultUser,
+} from './lib/CryptoVault';
 import { DashboardView } from './components/DashboardView';
 import { SetupView } from './components/SetupView';
 import { LiveInterviewView } from './components/LiveInterviewView';
@@ -31,6 +39,7 @@ import {
   FileText,
   Palette,
   ShieldCheck,
+  Lock,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 
@@ -41,6 +50,7 @@ export const pageTransition = {
 
 export default function App() {
   const [view, setView] = useState<ViewState>('auth');
+  const [vaultReady, setVaultReady] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [sessionParams, setSessionParams] = useState<InterviewConfig | null>(
     null
@@ -59,11 +69,9 @@ export default function App() {
     if (user) {
       const updatedUser = { ...user, ...updatedProps };
       setUser(updatedUser);
-      const usersDB = JSON.parse(localStorage.getItem('usersDB') || '{}');
-      if (usersDB[user.email]) {
-        usersDB[user.email].user = updatedUser;
-        localStorage.setItem('usersDB', JSON.stringify(usersDB));
-      }
+      updateVaultUser(updatedUser).catch((err) =>
+        console.warn('Encrypted vault update error:', err)
+      );
     }
   };
 
@@ -77,32 +85,41 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     if (params.get('cert')) {
       setView('public-cert');
+      setVaultReady(true);
       return;
     }
 
-    const authDataStr = localStorage.getItem('authData');
-    if (authDataStr) {
+    let active = true;
+    const hydrateEncryptedVault = async () => {
       try {
-        const authData = JSON.parse(authDataStr);
-        const now = Date.now();
-        const oneWeek = 7 * 24 * 60 * 60 * 1000;
-
-        if (now - authData.timestamp < oneWeek) {
-          const usersDB = JSON.parse(localStorage.getItem('usersDB') || '{}');
-          if (usersDB[authData.email]) {
-            const dbUser = usersDB[authData.email].user;
-            setUser(dbUser);
-            document.documentElement.dataset.theme =
-              dbUser.themePreference || 'amoled';
-            setView('dashboard');
+        await initializeVault();
+        const session = await getVaultSession();
+        if (session) {
+          const oneWeek = 7 * 24 * 60 * 60 * 1000;
+          if (Date.now() - session.timestamp < oneWeek) {
+            const dbUser = await getVaultUser(session.email);
+            if (dbUser && active) {
+              setUser(dbUser);
+              document.documentElement.dataset.theme =
+                dbUser.themePreference || 'amoled';
+              setView('dashboard');
+            }
+          } else {
+            clearVaultSession();
           }
-        } else {
-          localStorage.removeItem('authData');
         }
-      } catch {
-        localStorage.removeItem('authData');
+      } catch (e) {
+        console.warn('Vault hydration error:', e);
+        clearVaultSession();
+      } finally {
+        if (active) setVaultReady(true);
       }
-    }
+    };
+
+    hydrateEncryptedVault();
+    return () => {
+      active = false;
+    };
   }, []);
 
   const handleStartInterview = (config: InterviewConfig) => {
@@ -145,6 +162,19 @@ export default function App() {
     { id: 'obsidian', label: 'Obsidian Sapphire', swatch: 'bg-blue-700' },
   ];
 
+  if (!vaultReady) {
+    return (
+      <div className="min-h-screen bg-black text-slate-100 flex flex-col items-center justify-center gap-4">
+        <div className="w-11 h-11 rounded-xl border border-blue-500/30 bg-[#050912] flex items-center justify-center text-blue-400">
+          <Lock size={20} className="animate-pulse" />
+        </div>
+        <div className="text-xs font-mono text-slate-400">
+          Unlocking AES-256-GCM Encrypted Vault...
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-black text-slate-100 font-sans selection:bg-blue-600/30 overflow-x-hidden relative flex flex-col">
       {/* Subtle AMOLED blue atmospheric lighting */}
@@ -157,7 +187,6 @@ export default function App() {
       {view !== 'live' && view !== 'auth' && view !== 'public-cert' && (
         <header className="border-b border-[#16223b] bg-black/90 backdrop-blur-lg sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between gap-8">
-            {/* Zone 1: Brand wordmark */}
             <button
               type="button"
               onClick={() => setView('dashboard')}
@@ -171,7 +200,6 @@ export default function App() {
               </span>
             </button>
 
-            {/* Zone 2: Concise single-line navigation links */}
             <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
               <button
                 type="button"
@@ -230,19 +258,19 @@ export default function App() {
               </button>
             </nav>
 
-            {/* Zone 3: Theme Selector & User Profile */}
             <div className="flex items-center gap-3 shrink-0">
               <button
                 type="button"
                 onClick={() => setView('security')}
-                className={`p-2 rounded-lg transition-colors cursor-pointer ${
+                className={`p-2 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-medium ${
                   view === 'security'
-                    ? 'text-blue-400 bg-[#0a1120]'
+                    ? 'text-emerald-400 bg-[#0a1120]'
                     : 'text-slate-400 hover:text-white hover:bg-[#0a1120]'
                 }`}
-                title="Security Diagnostics"
+                title="Live Encryption & Security Audit"
               >
                 <ShieldCheck size={17} />
+                <span className="hidden lg:inline">Security</span>
               </button>
 
               <div className="relative">
@@ -281,7 +309,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => {
-                    localStorage.removeItem('authData');
+                    clearVaultSession();
                     setUser(null);
                     setView('auth');
                   }}
@@ -317,17 +345,11 @@ export default function App() {
               className="flex-1 flex flex-col"
             >
               <AuthView
-                onLogin={(u, rememberMe) => {
+                onLogin={async (u, rememberMe) => {
                   if (rememberMe) {
-                    localStorage.setItem(
-                      'authData',
-                      JSON.stringify({
-                        email: u.email,
-                        timestamp: Date.now(),
-                      })
-                    );
+                    await saveVaultSession(u.email);
                   } else {
-                    localStorage.removeItem('authData');
+                    clearVaultSession();
                   }
                   document.documentElement.dataset.theme =
                     u.themePreference || 'amoled';
@@ -410,89 +432,80 @@ export default function App() {
                 session={currentSession}
                 onRetake={() => setView('setup')}
                 onDashboard={() => setView('dashboard')}
-                onSaveScore={(score) => {
+                onSaveScore={async (score) => {
                   if (user && user.email) {
-                    const usersDB = JSON.parse(
-                      localStorage.getItem('usersDB') || '{}'
-                    );
-                    if (usersDB[user.email]) {
-                      const dbUser = usersDB[user.email].user;
-                      const newTotal = (dbUser.totalInterviews || 0) + 1;
+                    const latestUser = (await getVaultUser(user.email)) || user;
+                    const newTotal = (latestUser.totalInterviews || 0) + 1;
 
-                      let scoreNum = score.overallScore ?? 50;
-                      if (scoreNum === 50) {
-                        if (
-                          score.crackProbability === 'Highly Likely' ||
-                          score.crackProbability === 'High'
-                        )
-                          scoreNum = 90;
-                        if (
-                          score.crackProbability === 'Possible' ||
-                          score.crackProbability === 'Moderate'
-                        )
-                          scoreNum = 70;
-                        if (score.crackProbability === 'Needs Work')
-                          scoreNum = 40;
-                      }
-
-                      const newAvg = Math.round(
-                        ((dbUser.averageScore || 0) *
-                          (dbUser.totalInterviews || 0) +
-                          scoreNum) /
-                          newTotal
-                      );
-
-                      dbUser.totalInterviews = newTotal;
-                      dbUser.averageScore = newAvg;
-                      dbUser.scoreHistory = [
-                        ...(dbUser.scoreHistory || []),
-                        scoreNum,
-                      ];
-
-                      if (currentSession) {
-                        const startTime = new Date(
-                          currentSession.startTime
-                        ).getTime();
-                        const endTime = Date.now();
-                        const diffSeconds = (endTime - startTime) / 1000;
-                        dbUser.timeSpentSeconds =
-                          (dbUser.timeSpentSeconds || 0) + diffSeconds;
-
-                        if (!dbUser.companiesInterviewed)
-                          dbUser.companiesInterviewed = [];
-                        if (
-                          !dbUser.companiesInterviewed.includes(
-                            currentSession.company
-                          )
-                        ) {
-                          dbUser.companiesInterviewed.push(
-                            currentSession.company
-                          );
-                        }
-
-                        if (!dbUser.pastSessions) dbUser.pastSessions = [];
-                        dbUser.pastSessions.unshift({
-                          id: currentSession.id,
-                          date: currentSession.startTime,
-                          company: currentSession.company,
-                          role: currentSession.role,
-                          score: scoreNum,
-                          crackProbability:
-                            score.crackProbability || 'Unknown',
-                          overallSummary: score.overallSummary,
-                          improvements: score.improvements,
-                          studyTopics: score.studyTopics,
-                          resumeUsed:
-                            currentSession.resumeProfile?.fileName || undefined,
-                          skillScores: score.skillScores,
-                        });
-                      }
-
-                      dbUser.loginStreak = (dbUser.loginStreak || 0) + 1;
-                      usersDB[user.email].user = dbUser;
-                      localStorage.setItem('usersDB', JSON.stringify(usersDB));
-                      setUser(dbUser);
+                    let scoreNum = score.overallScore ?? 50;
+                    if (scoreNum === 50) {
+                      if (
+                        score.crackProbability === 'Highly Likely' ||
+                        score.crackProbability === 'High'
+                      )
+                        scoreNum = 90;
+                      if (
+                        score.crackProbability === 'Possible' ||
+                        score.crackProbability === 'Moderate'
+                      )
+                        scoreNum = 70;
+                      if (score.crackProbability === 'Needs Work') scoreNum = 40;
                     }
+
+                    const newAvg = Math.round(
+                      ((latestUser.averageScore || 0) *
+                        (latestUser.totalInterviews || 0) +
+                        scoreNum) /
+                        newTotal
+                    );
+
+                    const updatedUser: User = {
+                      ...latestUser,
+                      totalInterviews: newTotal,
+                      averageScore: newAvg,
+                      scoreHistory: [
+                        ...(latestUser.scoreHistory || []),
+                        scoreNum,
+                      ],
+                      loginStreak: (latestUser.loginStreak || 0) + 1,
+                    };
+
+                    if (currentSession) {
+                      const startTime = new Date(
+                        currentSession.startTime
+                      ).getTime();
+                      const diffSeconds = (Date.now() - startTime) / 1000;
+                      updatedUser.timeSpentSeconds =
+                        (updatedUser.timeSpentSeconds || 0) + diffSeconds;
+
+                      const companies = [
+                        ...(updatedUser.companiesInterviewed || []),
+                      ];
+                      if (!companies.includes(currentSession.company)) {
+                        companies.push(currentSession.company);
+                      }
+                      updatedUser.companiesInterviewed = companies;
+
+                      const sessions = [...(updatedUser.pastSessions || [])];
+                      sessions.unshift({
+                        id: currentSession.id,
+                        date: currentSession.startTime,
+                        company: currentSession.company,
+                        role: currentSession.role,
+                        score: scoreNum,
+                        crackProbability: score.crackProbability || 'Unknown',
+                        overallSummary: score.overallSummary,
+                        improvements: score.improvements,
+                        studyTopics: score.studyTopics,
+                        resumeUsed:
+                          currentSession.resumeProfile?.fileName || undefined,
+                        skillScores: score.skillScores,
+                      });
+                      updatedUser.pastSessions = sessions;
+                    }
+
+                    await updateVaultUser(updatedUser);
+                    setUser(updatedUser);
                   }
                 }}
               />
@@ -572,7 +585,15 @@ export default function App() {
               exit={{ opacity: 0 }}
               transition={pageTransition}
             >
-              <SecurityView onNavigate={setView} />
+              <SecurityView
+                onNavigate={setView}
+                onVaultWiped={() => {
+                  setUser(null);
+                  setSessionParams(null);
+                  setCurrentSession(null);
+                  setView('auth');
+                }}
+              />
             </motion.div>
           )}
         </AnimatePresence>
@@ -618,7 +639,7 @@ export default function App() {
               </a>
             </div>
             <div className="text-xs text-slate-500">
-              Created by Arjun PV · Interview Copilot Pro
+              Created by Arjun PV · Interview Copilot Pro · AES-256-GCM Encrypted
             </div>
           </div>
         </footer>
