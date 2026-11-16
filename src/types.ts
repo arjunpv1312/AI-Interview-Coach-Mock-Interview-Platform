@@ -1,3 +1,47 @@
+export interface ResumeProject {
+  name: string;
+  techStack: string[];
+  highlights: string;
+}
+
+export interface ResumeExperience {
+  role: string;
+  company: string;
+  duration: string;
+  impact: string;
+}
+
+export interface ResumeProfile {
+  id: string;
+  fileName: string;
+  uploadedAt: string;
+  candidateName: string;
+  headline: string;
+  yearsExperience: number;
+  skills: string[];
+  projects: ResumeProject[];
+  experience: ResumeExperience[];
+  tailoredAngles: string[];
+  rawSummary: string;
+}
+
+export interface SkillScores {
+  technicalDepth: number;
+  resumeAlignment: number;
+  systemArchitecture: number;
+  communication: number;
+  problemSolving: number;
+}
+
+export interface QuestionReview {
+  question: string;
+  candidateAnswer: string;
+  rating: number;
+  verdict: 'Strong' | 'Partial' | 'Needs Depth';
+  feedback: string;
+  idealAnswer: string;
+}
+
 export interface PastSession {
   id: string;
   date: string;
@@ -8,6 +52,8 @@ export interface PastSession {
   overallSummary?: string;
   improvements?: string[];
   studyTopics?: string[];
+  resumeUsed?: string;
+  skillScores?: SkillScores;
 }
 
 export interface ScheduledSession {
@@ -17,6 +63,8 @@ export interface ScheduledSession {
   role: string;
   type: string;
 }
+
+export type ThemeVariant = 'amoled' | 'cobalt' | 'cyan' | 'obsidian' | 'default' | 'midnight' | 'forest' | 'sunset';
 
 export interface User {
   id: string;
@@ -32,7 +80,9 @@ export interface User {
   scheduledSessions?: ScheduledSession[];
   loginStreak?: number;
   dailyGoal?: number;
-  themePreference?: 'default' | 'midnight' | 'forest' | 'sunset';
+  themePreference?: ThemeVariant;
+  resumeProfile?: ResumeProfile | null;
+  authProvider?: 'email' | 'google' | 'github' | 'guest';
 }
 
 export interface Question {
@@ -52,6 +102,18 @@ export interface ChatMessage {
   text: string;
 }
 
+export interface InterviewConfig {
+  company: string;
+  role: string;
+  type: string;
+  experience: number;
+  difficulty: 'Easy' | 'Medium' | 'Hard' | string;
+  resumeProfile?: ResumeProfile | null;
+  startWithResume?: boolean;
+  strictMode?: boolean;
+  focusTopics?: string;
+}
+
 export interface InterviewSession {
   id: string;
   userId: string;
@@ -61,14 +123,32 @@ export interface InterviewSession {
   difficulty: string;
   startTime: string;
   history: ChatMessage[];
+  resumeProfile?: ResumeProfile | null;
   finalEvaluation?: {
     crackProbability: string;
+    overallScore: number;
     overallSummary: string;
     speakingSkills: string;
     technicalSkills: string;
     deepDive: string;
+    skillScores?: SkillScores;
+    questionReviews?: QuestionReview[];
     improvements: string[];
+    studyTopics?: string[];
   };
 }
 
-export type ViewState = 'auth' | 'dashboard' | 'setup' | 'live' | 'results' | 'bank' | 'history' | 'simulation' | 'certificate' | 'suggestions' | 'learner' | 'security' | 'public-cert';
+export type ViewState =
+  | 'auth'
+  | 'dashboard'
+  | 'setup'
+  | 'live'
+  | 'results'
+  | 'bank'
+  | 'history'
+  | 'simulation'
+  | 'certificate'
+  | 'suggestions'
+  | 'learner'
+  | 'security'
+  | 'public-cert';
