@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Webcam from 'react-webcam';
 import { ChatMessage } from '../types';
 import { Logo } from './Logo';
-import { Clock, Video, Mic, CheckCircle2, Building2, BrainCircuit, RefreshCcw, Camera, HelpCircle, Send } from 'lucide-react';
+import { Clock, Video, VideoOff, Mic, CheckCircle2, Building2, BrainCircuit, RefreshCcw, Camera, HelpCircle, Send, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface LiveInterviewViewProps {
@@ -28,7 +28,9 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
   const [errorToast, setErrorToast] = useState('');
-  
+  const [webcamError, setWebcamError] = useState(false);
+  const [webcamErrorMessage, setWebcamErrorMessage] = useState('');
+
   const [isMicOn, setIsMicOn] = useState(true);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [voiceGender, setVoiceGender] = useState<'male' | 'female'>('female');
@@ -52,18 +54,37 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
   useEffect(() => {
     const getDevices = async () => {
       try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
         const mediaDevices = await navigator.mediaDevices.enumerateDevices();
-        const videoDevices = mediaDevices.filter(device => device.kind === 'videoinput');
+        const videoDevices = mediaDevices.filter(device => device.kind === 'videoinput' && Boolean(device.deviceId));
         setDevices(videoDevices);
-        if (videoDevices.length > 0) {
+        if (videoDevices.length > 0 && videoDevices[0].deviceId) {
           setSelectedDeviceId(videoDevices[0].deviceId);
         }
       } catch (err) {
-        console.error("Error enumerating devices:", err);
+        console.warn("Error enumerating devices:", err);
       }
     };
     getDevices();
   }, []);
+
+  const handleWebcamError = (err: any) => {
+    console.warn("Webcam Error: ", err);
+    setWebcamError(true);
+    const msg = typeof err === 'string' ? err : (err?.message || err?.name || 'Could not start video source');
+    setWebcamErrorMessage(msg);
+  };
+
+  const handleWebcamSuccess = () => {
+    setWebcamError(false);
+    setWebcamErrorMessage('');
+  };
+
+  const retryWebcam = () => {
+    setWebcamError(false);
+    setWebcamErrorMessage('');
+    setSelectedDeviceId('');
+  };
 
   const getSelectedVoice = () => {
     if (selectedVoiceRef.current) return selectedVoiceRef.current;
@@ -770,24 +791,59 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
         {/* Right Side: Recording Area (60%) */}
         <div className="lg:w-[60%] bg-slate-900/40 backdrop-blur-md border border-slate-700/50 rounded-3xl p-6 flex flex-col shadow-2xl overflow-hidden relative group/right">
           
-          <div className="flex-1 bg-black/80 rounded-2xl overflow-hidden relative border border-slate-700/80 shadow-2xl min-h-[300px]">
-             {/* @ts-ignore */}
-             <Webcam 
-                audio={false}
-                videoConstraints={selectedDeviceId ? { deviceId: selectedDeviceId } : { facingMode: "user" }}
-                className="w-full h-full object-cover opacity-90 transition-opacity duration-1000"
-                mirrored={facingMode === "user"}
-                onUserMediaError={(err: any) => console.error("Webcam Error: ", err)}
-             />
-             
-             {/* Subtle vignette effect for webcam */}
-             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(0,0,0,0.4)_100%)] pointer-events-none" />
+          <div className="flex-1 bg-slate-950 rounded-2xl overflow-hidden relative border border-slate-700/80 shadow-2xl min-h-[300px] flex items-center justify-center">
+             {!webcamError ? (
+               <>
+                 {/* @ts-ignore */}
+                 <Webcam 
+                    key={selectedDeviceId || facingMode}
+                    audio={false}
+                    videoConstraints={selectedDeviceId ? { deviceId: selectedDeviceId } : { facingMode: facingMode }}
+                    className="w-full h-full object-cover opacity-90 transition-opacity duration-1000"
+                    mirrored={facingMode === "user"}
+                    onUserMedia={handleWebcamSuccess}
+                    onUserMediaError={handleWebcamError}
+                 />
+                 
+                 {/* Subtle vignette effect for webcam */}
+                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(0,0,0,0.4)_100%)] pointer-events-none" />
+               </>
+             ) : (
+               /* Polished Fallback View when webcam is blocked or unavailable */
+               <div className="flex flex-col items-center justify-center p-6 text-center z-10 space-y-4 max-w-sm">
+                 <div className="w-20 h-20 bg-slate-900/90 border border-slate-700/80 rounded-3xl flex items-center justify-center shadow-xl text-slate-400 relative">
+                    <VideoOff size={36} className="text-amber-400" />
+                    <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-slate-800 rounded-full border border-slate-700 flex items-center justify-center">
+                      <AlertCircle size={14} className="text-amber-400" />
+                    </div>
+                 </div>
+                 <div>
+                   <h4 className="text-base font-bold text-white mb-1">Camera Stream Unavailable</h4>
+                   <p className="text-xs text-slate-400 leading-relaxed mb-1">
+                     {webcamErrorMessage || 'Could not start video source.'}
+                   </p>
+                   <p className="text-[11px] text-slate-500">
+                     Select another video device or click retry below. Your audio/text interview will proceed smoothly.
+                   </p>
+                 </div>
+                 <button
+                   onClick={retryWebcam}
+                   className="px-4 py-2 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/40 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-lg"
+                 >
+                   <RefreshCcw size={14} />
+                   Retry Camera
+                 </button>
+               </div>
+             )}
 
              <div className="absolute top-5 right-5 flex items-center gap-3 opacity-0 group-hover/right:opacity-100 transition-opacity duration-300 z-50">
                 {devices.length > 1 && (
                     <select 
                         value={selectedDeviceId}
-                        onChange={(e) => setSelectedDeviceId(e.target.value)}
+                        onChange={(e) => {
+                          setSelectedDeviceId(e.target.value);
+                          setWebcamError(false);
+                        }}
                         className="bg-slate-900/90 backdrop-blur-md text-white text-xs font-semibold tracking-wider uppercase border border-slate-700/80 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 shadow-xl"
                     >
                         {devices.map((device, idx) => (
@@ -798,7 +854,10 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
                     </select>
                 )}
                 <button 
-                    onClick={toggleCamera}
+                    onClick={() => {
+                        toggleCamera();
+                        setWebcamError(false);
+                    }}
                     className="p-2.5 bg-slate-900/90 hover:bg-blue-600 backdrop-blur-md rounded-xl border border-slate-700/80 shadow-xl text-white transition-all flex items-center gap-2"
                     title="Switch Camera (Front/Rear)"
                 >
@@ -807,9 +866,9 @@ export function LiveInterviewView({ config, onComplete, onCancel }: LiveIntervie
                 </button>
              </div>
              
-             {/* Active Mic Indicator overlay on webcam */}
+             {/* Active Mic Indicator overlay on webcam or fallback */}
              {isMicOn && !isThinking && !isSpeaking && (
-                 <div className="absolute bottom-5 right-5 flex items-center gap-3 bg-slate-900/80 backdrop-blur-md px-4 py-2 rounded-full border border-slate-700/50">
+                 <div className="absolute bottom-5 right-5 flex items-center gap-3 bg-slate-900/80 backdrop-blur-md px-4 py-2 rounded-full border border-slate-700/50 z-20">
                      <canvas ref={visualizerCanvasRef} width={60} height={20} className="opacity-80" />
                      <div className="flex items-center gap-2 border-l border-slate-700 w-full pl-3">
                         <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
