@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Target, TrendingUp, CheckCircle } from 'lucide-react';
+import { Target, CheckCircle2 } from 'lucide-react';
 import { User } from '../types';
 
 interface DailyGoalTrackerProps {
@@ -7,84 +7,112 @@ interface DailyGoalTrackerProps {
   onUpdateGoal: (goal: number) => void;
 }
 
-export function DailyGoalTracker({ user, onUpdateGoal }: DailyGoalTrackerProps) {
+export function DailyGoalTracker({
+  user,
+  onUpdateGoal,
+}: DailyGoalTrackerProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [goalInput, setGoalInput] = useState(user.dailyGoal || 1);
 
   const handleSave = () => {
     let newGoal = parseInt(goalInput.toString(), 10);
     if (isNaN(newGoal) || newGoal < 1) newGoal = 1;
+    if (newGoal > 20) newGoal = 20;
     onUpdateGoal(newGoal);
     setIsEditing(false);
   };
 
   const todayStr = new Date().toISOString().split('T')[0];
-  const completedToday = user.pastSessions?.filter(s => s.date.startsWith(todayStr)).length || 0;
+  const completedToday =
+    user.pastSessions?.filter((s) => s.date.startsWith(todayStr)).length || 0;
   const goal = user.dailyGoal || 1;
   const progress = Math.min((completedToday / goal) * 100, 100);
   const isGoalReached = completedToday >= goal;
 
   return (
-    <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-xl p-6">
-      <div className="flex justify-between items-start mb-4">
-        <div className="flex items-center gap-2">
-          <div className={`p-2 rounded-lg ${isGoalReached ? 'bg-emerald-500/20 text-emerald-400' : 'bg-blue-500/20 text-blue-400'}`}>
-            {isGoalReached ? <CheckCircle size={20} /> : <Target size={20} />}
+    <div className="amoled-surface rounded-2xl p-6 flex flex-col justify-between">
+      <div className="flex justify-between items-start gap-4">
+        <div className="flex items-center gap-3">
+          <div
+            className={`p-2.5 rounded-xl border ${
+              isGoalReached
+                ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
+                : 'bg-blue-600/15 border-blue-500/30 text-blue-400'
+            }`}
+          >
+            {isGoalReached ? <CheckCircle2 size={18} /> : <Target size={18} />}
           </div>
           <div>
-            <h3 className="text-white font-bold">Daily Goal</h3>
-            <p className="text-sm text-slate-400">Mock interviews today</p>
+            <h3 className="text-sm font-bold text-white">Daily Practice Goal</h3>
+            <p className="text-xs text-slate-400">Mock interviews completed today</p>
           </div>
         </div>
-        
+
         {isEditing ? (
-          <div className="flex items-center gap-2">
-            <input 
-              type="number" 
+          <div className="flex items-center gap-2 shrink-0">
+            <input
+              type="number"
               min="1"
+              max="20"
               value={goalInput}
-              onChange={e => setGoalInput(parseInt(e.target.value) || 1)}
-              className="w-16 bg-slate-800 border border-slate-700 rounded text-white text-center text-sm py-1"
+              onChange={(e) => setGoalInput(parseInt(e.target.value, 10) || 1)}
+              className="w-16 bg-black border border-[#16223b] rounded-lg text-white text-center text-xs font-mono tabular-nums py-1.5 outline-none focus:border-blue-500"
             />
-            <button 
+            <button
+              type="button"
               onClick={handleSave}
-              className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded transition-colors"
+              className="px-3 py-1.5 amoled-btn-primary text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
             >
               Save
             </button>
           </div>
         ) : (
-          <button 
-            onClick={() => setIsEditing(true)}
-            className="text-xs font-medium text-slate-400 hover:text-white transition-colors underline"
+          <button
+            type="button"
+            onClick={() => {
+              setGoalInput(goal);
+              setIsEditing(true);
+            }}
+            className="text-xs font-medium text-blue-400 hover:text-cyan-300 transition-colors cursor-pointer whitespace-nowrap"
           >
             Edit Goal
           </button>
         )}
       </div>
 
-      <div className="mt-6 flex flex-col items-center">
-        <div className="flex items-end gap-1 mb-2">
-          <span className={`text-4xl font-bold ${isGoalReached ? 'text-emerald-400' : 'text-white'}`}>
-            {completedToday}
+      <div className="mt-5 space-y-2.5">
+        <div className="flex items-baseline justify-between">
+          <div className="flex items-baseline gap-1.5 font-mono tabular-nums">
+            <span
+              className={`text-2xl font-bold ${
+                isGoalReached ? 'text-emerald-400' : 'text-white'
+              }`}
+            >
+              {completedToday}
+            </span>
+            <span className="text-xs text-slate-400">/ {goal} sessions</span>
+          </div>
+          <span
+            className={`text-xs font-medium ${
+              isGoalReached ? 'text-emerald-400' : 'text-slate-400'
+            }`}
+          >
+            {isGoalReached
+              ? 'Target achieved'
+              : `${goal - completedToday} remaining today`}
           </span>
-          <span className="text-slate-500 font-medium pb-1.5">/ {goal}</span>
         </div>
-        
-        <div className="w-full h-3 bg-slate-800 rounded-full overflow-hidden mt-2 relative">
-          <div 
-            className={`h-full rounded-full transition-all duration-1000 ${isGoalReached ? 'bg-emerald-400' : 'bg-blue-500'}`}
+
+        <div className="w-full h-2.5 bg-black border border-[#16223b] rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all duration-700 ${
+              isGoalReached
+                ? 'bg-emerald-500'
+                : 'bg-gradient-to-r from-blue-600 to-cyan-400'
+            }`}
             style={{ width: `${progress}%` }}
-          ></div>
+          />
         </div>
-        
-        <p className="text-sm font-medium mt-4 text-center">
-          {isGoalReached ? (
-             <span className="text-emerald-400">Goal reached! Great work!</span>
-          ) : (
-             <span className="text-slate-400">{goal - completedToday} more to reach your goal.</span>
-          )}
-        </p>
       </div>
     </div>
   );

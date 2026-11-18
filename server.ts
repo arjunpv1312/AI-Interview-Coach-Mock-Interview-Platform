@@ -761,11 +761,13 @@ Transcript:
 
   app.post('/api/insights', async (req, res) => {
     try {
-      const { userDetails, historyStr } = req.body;
+      const { userDetails, historyStr, resumeProfile } = req.body;
+      const resumeBlock = formatResumeContext(resumeProfile);
       const prompt = `You are an expert career coach and technical interviewer analyzing a candidate's overall progress.
 
 Candidate Profile:
 ${userDetails}
+${resumeBlock}
 
 Summary of Past Sessions:
 ${historyStr}
@@ -823,7 +825,7 @@ Respond ONLY in JSON format:
   "title": "Module Title",
   "lastUpdated": "Today's Date",
   "trends": ["trend1", "trend2"],
-  "resources": [{"name": "Resource source", "url": "url"}],
+  "resources": [{"name": "Official documentation or engineering guide name", "url": "https://... valid official URL or empty string"}],
   "newQuestions": [{"question": "Q1", "concept": "what it tests"}]
 }`;
 

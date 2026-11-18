@@ -1,6 +1,6 @@
 import React from 'react';
 import { User } from '../types';
-import { Award, Star, Flame, Trophy, TrendingUp } from 'lucide-react';
+import { Award, Star, Flame, Trophy, TrendingUp, CheckCircle2 } from 'lucide-react';
 
 interface BadgesProps {
   user: User;
@@ -8,177 +8,142 @@ interface BadgesProps {
 }
 
 export function Badges({ user, onNavigate }: BadgesProps) {
-  const badges = [];
+  const streak = user.loginStreak || 0;
+  const hasImprovementStreak = Boolean(
+    user.scoreHistory &&
+      user.scoreHistory.length >= 2 &&
+      user.scoreHistory[user.scoreHistory.length - 1] >
+        user.scoreHistory[user.scoreHistory.length - 2]
+  );
+  const isTopPerformer = Boolean(
+    user.scoreHistory && user.scoreHistory.some((score) => score >= 90)
+  );
 
-  // Badge 1: First Interview
-  if (user.totalInterviews > 0) {
-    badges.push({
-      id: 'first-interview',
-      title: 'First Step',
-      description: 'Completed your first interview session',
-      icon: <Star className="text-amber-400" size={24} />,
-      color: 'bg-amber-400/20 border-amber-500/50',
-      active: true
-    });
-  } else {
-    badges.push({
+  const badges = [
+    {
       id: 'first-interview',
       title: 'First Step',
       description: 'Complete your first interview session',
-      icon: <Star className="text-slate-500" size={24} />,
-      color: 'bg-slate-800/50 border-slate-700',
-      active: false
-    });
-  }
-
-  // Badge 2: 10 Sessions
-  if (user.totalInterviews >= 10) {
-    badges.push({
-      id: 'ten-sessions',
-      title: 'Interview Veteran',
-      description: 'Completed 10 interview sessions',
-      icon: <Award className="text-blue-400" size={24} />,
-      color: 'bg-blue-500/20 border-blue-500/50',
-      active: true
-    });
-  } else {
-    badges.push({
+      icon: Star,
+      active: user.totalInterviews > 0,
+      statusText: user.totalInterviews > 0 ? 'Unlocked' : '0/1',
+    },
+    {
       id: 'ten-sessions',
       title: 'Interview Veteran',
       description: 'Complete 10 interview sessions',
-      icon: <Award className="text-slate-500" size={24} />,
-      color: 'bg-slate-800/50 border-slate-700',
-      active: false,
-      progress: `${user.totalInterviews}/10`
-    });
-  }
-
-  // Badge 3: 7-Day Streak
-  const streak = user.loginStreak || 0;
-  if (streak >= 7) {
-    badges.push({
+      icon: Award,
+      active: user.totalInterviews >= 10,
+      statusText:
+        user.totalInterviews >= 10
+          ? 'Unlocked'
+          : `${user.totalInterviews}/10`,
+    },
+    {
       id: 'seven-day-streak',
       title: '7-Day Streak',
-      description: 'Logged in for 7 consecutive days',
-      icon: <Flame className="text-rose-500" size={24} />,
-      color: 'bg-rose-500/20 border-rose-500/50',
-      active: true
-    });
-  } else {
-    badges.push({
-      id: 'seven-day-streak',
-      title: '7-Day Streak',
-      description: 'Log in for 7 consecutive days',
-      icon: <Flame className="text-slate-500" size={24} />,
-      color: 'bg-slate-800/50 border-slate-700',
-      active: false,
-      progress: `${streak}/7`
-    });
-  }
-
-  // Badge 4: Improvement Streak
-  let hasImprovementStreak = false;
-  if (user.scoreHistory && user.scoreHistory.length >= 2) {
-    const lastTwo = user.scoreHistory.slice(-2);
-    if (lastTwo[1] > lastTwo[0]) {
-      hasImprovementStreak = true;
-    }
-  }
-
-  if (hasImprovementStreak) {
-    badges.push({
+      description: 'Practice across 7 sessions or days',
+      icon: Flame,
+      active: streak >= 7,
+      statusText: streak >= 7 ? 'Unlocked' : `${streak}/7`,
+    },
+    {
       id: 'improvement-streak',
       title: 'Trending Up',
-      description: 'Improved your score from the last session',
-      icon: <TrendingUp className="text-emerald-400" size={24} />,
-      color: 'bg-emerald-500/20 border-emerald-500/50',
-      active: true
-    });
-  } else {
-    badges.push({
-      id: 'improvement-streak',
-      title: 'Trending Up',
-      description: 'Improve your score from the last session',
-      icon: <TrendingUp className="text-slate-500" size={24} />,
-      color: 'bg-slate-800/50 border-slate-700',
-      active: false
-    });
-  }
-
-  // Badge 4: Top Performer (Score > 90)
-  const isTopPerformer = user.scoreHistory && user.scoreHistory.some(score => score >= 90);
-  
-  if (isTopPerformer) {
-    badges.push({
+      description: 'Beat your previous session score',
+      icon: TrendingUp,
+      active: hasImprovementStreak,
+      statusText: hasImprovementStreak ? 'Unlocked' : 'Pending',
+    },
+    {
       id: 'top-performer',
       title: 'Top Performer',
-      description: 'Achieved a score of 90+ in an interview',
-      icon: <Trophy className="text-purple-400" size={24} />,
-      color: 'bg-purple-500/20 border-purple-500/50',
-      active: true
-    });
-  } else {
-    badges.push({
-      id: 'top-performer',
-      title: 'Top Performer',
-      description: 'Achieve a score of 90+ in an interview',
-      icon: <Trophy className="text-slate-500" size={24} />,
-      color: 'bg-slate-800/50 border-slate-700',
-      active: false
-    });
-  }
+      description: 'Achieve a score of 90+ in a round',
+      icon: Trophy,
+      active: isTopPerformer,
+      statusText: isTopPerformer ? 'Unlocked' : '90+ Target',
+    },
+  ];
 
-  const hasCertificate = user.totalInterviews >= 10 || isTopPerformer || (user.loginStreak && user.loginStreak >= 7);
+  const hasCertificate =
+    user.totalInterviews >= 10 || isTopPerformer || streak >= 7;
 
   return (
-    <div className="bg-slate-900/40 border border-slate-700/50 rounded-2xl p-6 shadow-xl w-full">
-      <div className="flex items-center justify-between mb-6">
+    <div className="amoled-surface rounded-2xl p-6 w-full">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-indigo-500/20 rounded-lg">
-            <Award className="text-indigo-400" size={20} />
+          <div className="p-2 bg-blue-600/15 border border-blue-500/30 rounded-xl text-blue-400">
+            <Award size={18} />
           </div>
-          <h2 className="text-xl font-bold text-white">Your Badges</h2>
+          <div>
+            <h2 className="text-base font-bold text-white">
+              Milestones & Badges
+            </h2>
+            <p className="text-xs text-slate-400">
+              Earned automatically from your encrypted interview history
+            </p>
+          </div>
         </div>
-        
-        {hasCertificate && (
-          <button 
-            onClick={() => onNavigate('certificate')}
-            className="flex items-center gap-2 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-500/50 px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-lg"
-          >
-            <Award size={16} />
-            View Certificate
-          </button>
-        )}
+
+        <button
+          type="button"
+          onClick={() => onNavigate('certificate')}
+          className="flex items-center gap-2 bg-black hover:bg-[#0a1120] text-blue-300 border border-blue-500/40 px-4 py-2 rounded-xl text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap self-start sm:self-auto"
+        >
+          <Award size={15} />
+          <span>
+            {hasCertificate ? 'View Unlocked Certificates' : 'Certificate Milestones'}
+          </span>
+        </button>
       </div>
-      
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        {badges.map(badge => (
-          <div 
-            key={badge.id}
-            className={`flex flex-col gap-3 p-4 rounded-xl border ${badge.color} transition-all duration-300 relative overflow-hidden group`}
-          >
-            {badge.active && (
-              <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            )}
-            
-            <div className="flex items-start justify-between">
-              <div className={`p-3 rounded-full flex items-center justify-center ${badge.active ? 'bg-slate-900/50 shadow-inner block' : 'bg-slate-800/80 grayscale'}`}>
-                 {badge.icon}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        {badges.map((badge) => {
+          const Icon = badge.icon;
+          return (
+            <div
+              key={badge.id}
+              className={`flex flex-col gap-3 p-4 rounded-xl border transition-colors ${
+                badge.active
+                  ? 'bg-black border-blue-500/40'
+                  : 'bg-black/60 border-[#16223b]'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div
+                  className={`p-2.5 rounded-xl border ${
+                    badge.active
+                      ? 'bg-blue-600/15 border-blue-500/30 text-blue-400'
+                      : 'bg-[#050912] border-[#16223b] text-slate-500'
+                  }`}
+                >
+                  <Icon size={18} />
+                </div>
+                <span
+                  className={`text-xs font-mono tabular-nums flex items-center gap-1 ${
+                    badge.active ? 'text-cyan-400 font-semibold' : 'text-slate-500'
+                  }`}
+                >
+                  {badge.active && <CheckCircle2 size={12} />}
+                  {badge.statusText}
+                </span>
               </div>
-              {!badge.active && badge.progress && (
-                <span className="text-xs font-bold text-slate-500 bg-slate-800 px-2 py-1 rounded-md">{badge.progress}</span>
-              )}
-              {badge.active && (
-                <span className="text-[10px] font-bold text-indigo-300 bg-indigo-500/20 px-2 py-1 rounded-md uppercase tracking-wider">Unlocked</span>
-              )}
+
+              <div>
+                <h3
+                  className={`text-sm font-bold ${
+                    badge.active ? 'text-white' : 'text-slate-300'
+                  }`}
+                >
+                  {badge.title}
+                </h3>
+                <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                  {badge.description}
+                </p>
+              </div>
             </div>
-            
-            <div>
-              <h3 className={`font-bold ${badge.active ? 'text-white' : 'text-slate-400'}`}>{badge.title}</h3>
-              <p className="text-xs text-slate-500 mt-1 leading-relaxed">{badge.description}</p>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

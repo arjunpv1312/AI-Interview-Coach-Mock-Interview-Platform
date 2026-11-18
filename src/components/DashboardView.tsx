@@ -35,12 +35,14 @@ interface DashboardViewProps {
   user: User;
   onNavigate: (view: any) => void;
   onUpdateUser?: (props: Partial<User>) => void;
+  onLaunchPrefill?: (prefill: Partial<import('../types').InterviewConfig>) => void;
 }
 
 export function DashboardView({
   user,
   onNavigate,
   onUpdateUser,
+  onLaunchPrefill,
 }: DashboardViewProps) {
   const formatTimeSpent = (seconds?: number) => {
     if (!seconds) return '0m';
@@ -407,7 +409,14 @@ export function DashboardView({
           <CalendarIcon className="text-blue-400" size={18} />
           <span>Interview Schedule</span>
         </h2>
-        <CalendarWidget user={user} onNavigate={onNavigate} />
+        <CalendarWidget
+          user={user}
+          onNavigate={onNavigate}
+          onUpdateUser={onUpdateUser}
+          onLaunchSession={(prefill) =>
+            onLaunchPrefill ? onLaunchPrefill(prefill) : onNavigate('setup')
+          }
+        />
       </div>
     </div>
   );

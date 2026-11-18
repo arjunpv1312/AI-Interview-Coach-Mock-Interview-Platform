@@ -55,9 +55,16 @@ export default function App() {
   const [sessionParams, setSessionParams] = useState<InterviewConfig | null>(
     null
   );
+  const [setupPrefill, setSetupPrefill] =
+    useState<Partial<InterviewConfig> | null>(null);
   const [currentSession, setCurrentSession] =
     useState<InterviewSession | null>(null);
   const [themeDropdown, setThemeDropdown] = useState(false);
+
+  const launchSetupWithPrefill = (prefill: Partial<InterviewConfig>) => {
+    setSetupPrefill(prefill);
+    setView('setup');
+  };
 
   const handleThemeChange = (theme: ThemeVariant) => {
     document.documentElement.dataset.theme = theme;
@@ -381,8 +388,12 @@ export default function App() {
             >
               <DashboardView
                 user={user}
-                onNavigate={setView}
+                onNavigate={(nextView) => {
+                  if (nextView === 'setup') setSetupPrefill(null);
+                  setView(nextView);
+                }}
                 onUpdateUser={handleUpdateUser}
+                onLaunchPrefill={launchSetupWithPrefill}
               />
             </motion.div>
           )}
@@ -396,11 +407,18 @@ export default function App() {
             >
               <SetupView
                 savedResume={user?.resumeProfile}
+                prefillConfig={setupPrefill}
                 onSaveResume={(resume) =>
                   handleUpdateUser({ resumeProfile: resume })
                 }
-                onStart={handleStartInterview}
-                onCancel={cancelInterview}
+                onStart={(cfg) => {
+                  setSetupPrefill(null);
+                  handleStartInterview(cfg);
+                }}
+                onCancel={() => {
+                  setSetupPrefill(null);
+                  cancelInterview();
+                }}
               />
             </motion.div>
           )}
@@ -519,7 +537,12 @@ export default function App() {
               exit={{ opacity: 0, y: -10 }}
               transition={pageTransition}
             >
-              <QuestionBankView onNavigate={setView} />
+              <QuestionBankView
+                user={user}
+                onNavigate={setView}
+                onUpdateUser={handleUpdateUser}
+                onPracticeQuestion={launchSetupWithPrefill}
+              />
             </motion.div>
           )}
           {view === 'history' && user && (
@@ -541,7 +564,11 @@ export default function App() {
               exit={{ opacity: 0, y: -10 }}
               transition={pageTransition}
             >
-              <SimulationView onNavigate={setView} />
+              <SimulationView
+                user={user}
+                onNavigate={setView}
+                onLaunchSession={launchSetupWithPrefill}
+              />
             </motion.div>
           )}
           {view === 'certificate' && user && (
@@ -563,7 +590,11 @@ export default function App() {
               exit={{ opacity: 0 }}
               transition={pageTransition}
             >
-              <SuggestionsView user={user} onNavigate={setView} />
+              <SuggestionsView
+                user={user}
+                onNavigate={setView}
+                onLaunchTopic={launchSetupWithPrefill}
+              />
             </motion.div>
           )}
           {view === 'learner' && user && (
@@ -574,7 +605,11 @@ export default function App() {
               exit={{ opacity: 0 }}
               transition={pageTransition}
             >
-              <LearnerView onNavigate={setView} />
+              <LearnerView
+                user={user}
+                onNavigate={setView}
+                onPracticeConcept={launchSetupWithPrefill}
+              />
             </motion.div>
           )}
           {view === 'security' && user && (

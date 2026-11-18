@@ -20,6 +20,7 @@ import {
 
 interface SetupViewProps {
   savedResume?: ResumeProfile | null;
+  prefillConfig?: Partial<InterviewConfig> | null;
   onSaveResume?: (resume: ResumeProfile | null) => void;
   onStart: (config: InterviewConfig) => void;
   onCancel: () => void;
@@ -27,20 +28,21 @@ interface SetupViewProps {
 
 export function SetupView({
   savedResume,
+  prefillConfig,
   onSaveResume,
   onStart,
   onCancel,
 }: SetupViewProps) {
   const [config, setConfig] = useState<InterviewConfig>({
-    company: 'Google',
-    role: 'Software Engineer',
-    type: 'Technical',
-    experience: 3,
-    difficulty: 'Medium',
+    company: prefillConfig?.company || 'Google',
+    role: prefillConfig?.role || 'Software Engineer',
+    type: prefillConfig?.type || 'Technical',
+    experience: prefillConfig?.experience ?? 3,
+    difficulty: prefillConfig?.difficulty || 'Medium',
     resumeProfile: savedResume || null,
     startWithResume: true,
     strictMode: false,
-    focusTopics: '',
+    focusTopics: prefillConfig?.focusTopics || '',
   });
 
   const [isDragging, setIsDragging] = useState(false);

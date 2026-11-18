@@ -1,14 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { User } from '../types';
-import { ArrowLeft, Sparkles, AlertCircle, RefreshCcw, TrendingUp, TrendingDown, BookOpen, Clock } from 'lucide-react';
+import { User, InterviewConfig } from '../types';
+import {
+  ArrowLeft,
+  Sparkles,
+  AlertCircle,
+  RefreshCcw,
+  TrendingUp,
+  TrendingDown,
+  BookOpen,
+  FileText,
+  PlayCircle,
+} from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface SuggestionsViewProps {
   user: User;
   onNavigate: (view: any) => void;
+  onLaunchTopic?: (prefill: Partial<InterviewConfig>) => void;
 }
 
-export function SuggestionsView({ user, onNavigate }: SuggestionsViewProps) {
+export function SuggestionsView({
+  user,
+  onNavigate,
+  onLaunchTopic,
+}: SuggestionsViewProps) {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState(false);
@@ -20,7 +35,7 @@ export function SuggestionsView({ user, onNavigate }: SuggestionsViewProps) {
   const fetchInsights = async () => {
     setLoading(true);
     setError(false);
-    
+
     try {
       const userDetails = `
         Name: ${user.fullName}
@@ -28,24 +43,32 @@ export function SuggestionsView({ user, onNavigate }: SuggestionsViewProps) {
         Average Score: ${user.averageScore}
         Score Trajectory: ${user.scoreHistory ? user.scoreHistory.join(', ') : 'None'}
       `;
-      
-      let historyStr = "No past sessions yet. Need more data to provide fully accurate insights.";
+
+      let historyStr =
+        'No past sessions yet. Focus guidance on the candidate resume and core interview readiness.';
       if (user.pastSessions && user.pastSessions.length > 0) {
-        historyStr = user.pastSessions.slice(0, 5).map(s => 
-          `Session [${s.company} - ${s.role}]: Score ${s.score}. Improvements: ${s.improvements?.join(',')}`
-        ).join('\n');
+        historyStr = user.pastSessions
+          .slice(0, 5)
+          .map(
+            (s) =>
+              `Session [${s.company} - ${s.role}]: Score ${s.score}. Improvements: ${s.improvements?.join(', ')}`
+          )
+          .join('\n');
       }
 
       const res = await fetch('/api/insights', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userDetails, historyStr })
+        body: JSON.stringify({
+          userDetails,
+          historyStr,
+          resumeProfile: user.resumeProfile || null,
+        }),
       });
-      
+
       const result = await res.json();
       setData(result);
-    } catch (err) {
-      console.error(err);
+    } catch {
       setError(true);
     } finally {
       setLoading(false);
@@ -53,100 +76,185 @@ export function SuggestionsView({ user, onNavigate }: SuggestionsViewProps) {
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 pb-12 animate-in fade-in duration-500">
-      <div className="flex items-center justify-between mb-8">
-        <button 
-          onClick={() => onNavigate('dashboard')}
-          className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors p-2 -ml-2 rounded-lg hover:bg-slate-800"
-        >
-          <ArrowLeft size={20} /> Back to Dashboard
-        </button>
-        <button
-          onClick={fetchInsights}
-          disabled={loading}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30 rounded-xl transition-colors disabled:opacity-50"
-        >
-          <RefreshCcw size={16} className={loading ? "animate-spin" : ""} />
-          Refresh Insights
-        </button>
-      </div>
-
-      <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
-        <div className="p-3 bg-indigo-500/20 rounded-xl">
-          <Sparkles className="text-indigo-400" size={32} />
-        </div>
-        <div>
-          <h1 className="text-3xl font-bold text-white">AI Career Coach</h1>
-          <p className="text-slate-400">Personalized data-driven insights tailored to your interview performance.</p>
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="h-64 flex flex-col items-center justify-center space-y-4">
-          <div className="w-10 h-10 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
-          <p className="text-indigo-400 font-medium animate-pulse">Analyzing your interview patterns...</p>
-        </div>
-      ) : error ? (
-        <div className="bg-rose-500/10 border border-rose-500/20 p-6 rounded-2xl flex items-center gap-4 text-rose-400">
-          <AlertCircle size={32} />
+    <div className="max-w-5xl mx-auto space-y-6 pb-12">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#16223b] pb-6">
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            onClick={() => onNavigate('dashboard')}
+            className="p-2.5 bg-black border border-[#16223b] hover:border-blue-500/40 rounded-xl text-slate-400 hover:text-white transition-colors cursor-pointer"
+          >
+            <ArrowLeft size={18} />
+          </button>
           <div>
-            <h3 className="font-bold text-lg">Analysis Failed</h3>
-            <p className="text-sm opacity-80">We encountered a problem generating your insights. Please try again later.</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white flex items-center gap-2.5">
+              <Sparkles className="text-blue-400" size={24} />
+              <span>AI Career Coach</span>
+            </h1>
+            <p className="text-slate-400 text-sm mt-1">
+              Actionable coaching synthesized from your encrypted score history
+              {user.resumeProfile
+                ? ` and active resume (${user.resumeProfile.fileName})`
+                : ''}
+              .
+            </p>
           </div>
         </div>
+
+        <button
+          type="button"
+          onClick={fetchInsights}
+          disabled={loading}
+          className="flex items-center gap-2 px-4 py-2.5 bg-black hover:bg-[#0a1120] border border-blue-500/40 text-blue-300 text-xs font-semibold rounded-xl transition-colors disabled:opacity-50 cursor-pointer whitespace-nowrap"
+        >
+          <RefreshCcw size={14} className={loading ? 'animate-spin' : ''} />
+          <span>Refresh Insights</span>
+        </button>
+      </div>
+
+      {user.resumeProfile && (
+        <div className="amoled-surface rounded-2xl p-4 flex items-center gap-3 text-xs text-slate-300">
+          <FileText size={16} className="text-cyan-400 shrink-0" />
+          <span>
+            Resume-grounded coaching active for{' '}
+            <strong className="text-white">
+              {user.resumeProfile.candidateName}
+            </strong>{' '}
+            · {user.resumeProfile.skills.slice(0, 6).join(', ')}
+          </span>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="amoled-surface rounded-2xl h-64 flex flex-col items-center justify-center space-y-3">
+          <div className="w-9 h-9 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+          <p className="text-xs font-medium text-blue-300">
+            Analyzing interview patterns and resume alignment...
+          </p>
+        </div>
+      ) : error ? (
+        <div className="bg-rose-500/10 border border-rose-500/30 p-6 rounded-2xl flex items-center justify-between gap-4 text-rose-300">
+          <div className="flex items-center gap-3">
+            <AlertCircle size={24} />
+            <div>
+              <h3 className="font-bold text-sm">Analysis Unavailable</h3>
+              <p className="text-xs opacity-80">
+                Could not generate coaching insights right now.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={fetchInsights}
+            className="px-4 py-2 rounded-lg bg-black border border-rose-500/40 text-xs font-semibold text-white cursor-pointer"
+          >
+            Retry
+          </button>
+        </div>
       ) : data ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-          
-          <motion.div initial={{y: 20, opacity: 0}} animate={{y: 0, opacity: 1}} className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-6">
-            <h2 className="text-xl font-bold text-emerald-400 mb-4 items-center flex gap-2">
-              <TrendingUp /> Core Strengths
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <motion.div
+            initial={{ y: 12, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            className="amoled-surface rounded-2xl p-6 space-y-4"
+          >
+            <h2 className="text-base font-bold text-emerald-400 flex items-center gap-2">
+              <TrendingUp size={18} />
+              <span>Core Strengths</span>
             </h2>
-            <ul className="space-y-3">
+            <ul className="space-y-3 text-sm text-slate-300">
               {data.strengths?.map((str: string, i: number) => (
-                <li key={i} className="flex gap-3 text-slate-300">
-                  <span className="text-emerald-500 mt-1">•</span> {str}
+                <li key={i} className="flex gap-2.5 leading-relaxed">
+                  <span className="text-emerald-400 font-bold">•</span>
+                  <span>{str}</span>
                 </li>
               ))}
             </ul>
           </motion.div>
 
-          <motion.div initial={{y: 20, opacity: 0}} animate={{y: 0, opacity: 1}} transition={{delay: 0.1}} className="bg-rose-500/10 border border-rose-500/20 rounded-2xl p-6">
-            <h2 className="text-xl font-bold text-rose-400 mb-4 items-center flex gap-2">
-              <TrendingDown /> Areas for Growth
+          <motion.div
+            initial={{ y: 12, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.05 }}
+            className="amoled-surface rounded-2xl p-6 space-y-4"
+          >
+            <h2 className="text-base font-bold text-rose-400 flex items-center gap-2">
+              <TrendingDown size={18} />
+              <span>Priority Growth Areas</span>
             </h2>
-            <ul className="space-y-3">
+            <ul className="space-y-3 text-sm text-slate-300">
               {data.weaknesses?.map((wk: string, i: number) => (
-                <li key={i} className="flex gap-3 text-slate-300">
-                  <span className="text-rose-500 mt-1">•</span> {wk}
+                <li key={i} className="flex gap-2.5 leading-relaxed">
+                  <span className="text-rose-400 font-bold">•</span>
+                  <span>{wk}</span>
                 </li>
               ))}
             </ul>
           </motion.div>
 
-          <motion.div initial={{y: 20, opacity: 0}} animate={{y: 0, opacity: 1}} transition={{delay: 0.2}} className="md:col-span-2 bg-slate-800/40 border border-slate-700/50 rounded-2xl p-6">
-            <h2 className="text-xl font-bold text-indigo-400 mb-6 items-center flex gap-2">
-              <BookOpen /> Recommended Study Plan
+          <motion.div
+            initial={{ y: 12, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.1 }}
+            className="md:col-span-2 amoled-surface rounded-2xl p-6 space-y-5"
+          >
+            <h2 className="text-base font-bold text-blue-400 flex items-center gap-2">
+              <BookOpen size={18} />
+              <span>Targeted Study Plan</span>
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {data.studyPlan?.map((plan: any, i: number) => (
-                <div key={i} className="bg-slate-900/50 p-5 rounded-xl border border-slate-700/50 hover:border-indigo-500/30 transition-colors">
-                  <h3 className="font-bold text-white mb-2 text-lg">{plan.topic}</h3>
-                  <p className="text-sm text-slate-400 mb-4 border-l-2 border-indigo-500/50 pl-3">{plan.reason}</p>
-                  <div className="text-indigo-300/90 text-sm font-medium">
-                    <span className="block text-xs uppercase tracking-wider text-slate-500 mb-1">Action</span>
-                    {plan.actionableSteps}
+                <div
+                  key={i}
+                  className="bg-black p-5 rounded-xl border border-[#16223b] flex flex-col justify-between gap-4"
+                >
+                  <div className="space-y-2.5">
+                    <div className="text-xs font-mono text-blue-400">
+                      0{i + 1}. Focus Area
+                    </div>
+                    <h3 className="font-bold text-white text-base">
+                      {plan.topic}
+                    </h3>
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      {plan.reason}
+                    </p>
+                    <div className="pt-2 border-t border-[#16223b] text-xs text-cyan-300 leading-relaxed">
+                      <span className="block text-[11px] font-semibold text-slate-500 mb-1">
+                        Recommended Action
+                      </span>
+                      {plan.actionableSteps}
+                    </div>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onLaunchTopic
+                        ? onLaunchTopic({ focusTopics: plan.topic })
+                        : onNavigate('setup')
+                    }
+                    className="w-full py-2 rounded-lg bg-[#050912] hover:bg-[#0a1120] border border-blue-500/30 text-xs font-semibold text-blue-300 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <PlayCircle size={14} />
+                    <span>Practice This Focus</span>
+                  </button>
                 </div>
               ))}
             </div>
           </motion.div>
 
-          <motion.div initial={{y: 20, opacity: 0}} animate={{y: 0, opacity: 1}} transition={{delay: 0.3}} className="md:col-span-2 bg-gradient-to-r from-indigo-900/40 to-blue-900/40 border border-indigo-500/30 rounded-2xl p-8 relative overflow-hidden">
-             <Sparkles className="absolute right-0 top-0 text-white/5 w-64 h-64 -translate-y-1/4 translate-x-1/4 pointer-events-none" />
-             <h2 className="text-xl font-bold text-white mb-2">Coach's Advice</h2>
-             <p className="text-lg text-indigo-200 leading-relaxed font-serif italic">"{data.overallAdvice}"</p>
+          <motion.div
+            initial={{ y: 12, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.15 }}
+            className="md:col-span-2 amoled-surface rounded-2xl p-6 bg-gradient-to-r from-[#050b18] via-black to-[#041222] border-blue-500/30"
+          >
+            <h2 className="text-sm font-bold text-blue-400 mb-2">
+              Coach Recommendation
+            </h2>
+            <p className="text-base text-slate-100 leading-relaxed">
+              {data.overallAdvice}
+            </p>
           </motion.div>
-
         </div>
       ) : null}
     </div>

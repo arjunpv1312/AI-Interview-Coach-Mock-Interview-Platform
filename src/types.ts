@@ -83,6 +83,7 @@ export interface User {
   themePreference?: ThemeVariant;
   resumeProfile?: ResumeProfile | null;
   authProvider?: 'email' | 'google' | 'github' | 'guest';
+  bookmarkedQuestionIds?: string[];
 }
 
 export interface Question {

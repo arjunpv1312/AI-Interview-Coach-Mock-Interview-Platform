@@ -1,7 +1,17 @@
 import React, { useState } from 'react';
 import { User, PastSession } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { Building2, Briefcase, Activity, Calendar, Download, X, Target, CheckCircle2 } from 'lucide-react';
+import {
+  Building2,
+  Calendar,
+  Download,
+  X,
+  Target,
+  CheckCircle2,
+  FileText,
+  Search,
+  Activity,
+} from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
 interface HistoryViewProps {
@@ -10,237 +20,377 @@ interface HistoryViewProps {
 }
 
 export function HistoryView({ user, onNavigate }: HistoryViewProps) {
-    const [selectedSession, setSelectedSession] = useState<PastSession | null>(null);
-    const pastSessions = user.pastSessions || [];
+  const [selectedSession, setSelectedSession] = useState<PastSession | null>(
+    null
+  );
+  const [query, setQuery] = useState('');
+  const pastSessions = user.pastSessions || [];
 
-    const getScoreColor = (score: number) => {
-        if (score >= 80) return 'text-emerald-400';
-        if (score >= 60) return 'text-amber-400';
-        return 'text-rose-400';
-    };
+  const filteredSessions = pastSessions.filter((s) => {
+    if (!query.trim()) return true;
+    const q = query.toLowerCase();
+    return (
+      s.company.toLowerCase().includes(q) ||
+      s.role.toLowerCase().includes(q) ||
+      (s.resumeUsed && s.resumeUsed.toLowerCase().includes(q))
+    );
+  });
 
-    const handleExportCSV = () => {
-        if (!pastSessions.length) return;
+  const getScoreColor = (score: number) => {
+    if (score >= 80) return 'text-emerald-400';
+    if (score >= 60) return 'text-cyan-400';
+    return 'text-rose-400';
+  };
 
-        const headers = ['Date', 'Company', 'Role', 'Score', 'Probability'];
-        const rows = pastSessions.map(session => [
-            session.date ? format(parseISO(session.date), 'yyyy-MM-dd HH:mm:ss') : 'Unknown Date',
-            `"${session.company.replace(/"/g, '""')}"`,
-            `"${session.role.replace(/"/g, '""')}"`,
-            session.score,
-            `"${session.crackProbability}"`
-        ]);
+  const getProbColor = (prob: string) => {
+    if (prob === 'Highly Likely' || prob === 'High') return 'text-emerald-400';
+    if (prob === 'Possible' || prob === 'Moderate') return 'text-cyan-400';
+    return 'text-rose-400';
+  };
 
-        const csvContent = [
-            headers.join(','),
-            ...rows.map(row => row.join(','))
-        ].join('\n');
+  const handleExportCSV = () => {
+    if (!pastSessions.length) return;
 
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.setAttribute('href', url);
-        link.setAttribute('download', 'interview_history.csv');
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    };
+    const headers = ['Date', 'Company', 'Role', 'Score', 'Probability', 'Resume'];
+    const rows = pastSessions.map((session) => [
+      session.date
+        ? format(parseISO(session.date), 'yyyy-MM-dd HH:mm:ss')
+        : 'Unknown Date',
+      `"${session.company.replace(/"/g, '""')}"`,
+      `"${session.role.replace(/"/g, '""')}"`,
+      session.score,
+      `"${session.crackProbability}"`,
+      `"${(session.resumeUsed || 'None').replace(/"/g, '""')}"`,
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map((row) => row.join(',')),
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'interview_history.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-12">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold tracking-tight text-white">Interview History</h1>
-          <p className="text-slate-400">Review your past mock interviews and track your progress.</p>
+    <div className="max-w-6xl mx-auto space-y-6 pb-12">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-[#16223b] pb-6">
+        <div>
+          <p className="text-xs font-medium text-blue-400 mb-1.5">
+            Encrypted Performance Log
+          </p>
+          <h1 className="text-3xl font-bold tracking-tight text-white">
+            Interview History
+          </h1>
+          <p className="text-slate-400 text-sm mt-1">
+            Inspect past mock sessions, resume-grounded breakdowns, and score
+            progression.
+          </p>
         </div>
         {pastSessions.length > 0 && (
-          <button 
+          <button
+            type="button"
             onClick={handleExportCSV}
-            className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-xl font-medium transition-colors border border-slate-700"
+            className="flex items-center gap-2 bg-black hover:bg-[#0a1120] text-blue-300 px-4 py-2.5 rounded-xl text-xs font-semibold transition-colors border border-blue-500/40 cursor-pointer whitespace-nowrap self-start md:self-auto"
           >
-            <Download size={18} />
-            Export CSV
+            <Download size={15} />
+            <span>Export CSV</span>
           </button>
         )}
       </div>
 
-      {pastSessions.length === 0 ? (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center shadow-lg">
-            <div className="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Activity className="text-slate-500" size={32} />
-            </div>
-            <h3 className="text-xl font-bold text-white mb-2">No interviews yet</h3>
-            <p className="text-slate-400 max-w-md mx-auto mb-8">
-                You haven't completed any mock interviews. Your history and performance tracking will appear here once you finish your first session.
-            </p>
-            <button 
-                onClick={() => onNavigate('setup')}
-                className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-blue-500/20 transition-all"
-            >
-                Start Your First Interview
-            </button>
-        </div>
-      ) : (
-        <div className="space-y-4">
-            {pastSessions.map((session, i) => (
-                <motion.div 
-                    key={session.id || i}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.05 }}
-                    onClick={() => setSelectedSession(session)}
-                    className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg flex flex-col md:flex-row gap-6 justify-between items-start md:items-center hover:border-slate-700 transition-colors cursor-pointer"
-                >
-                    <div className="flex flex-col gap-4 flex-1">
-                        <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 bg-slate-800 rounded-xl flex items-center justify-center text-blue-400 shrink-0">
-                                <Building2 size={24} />
-                            </div>
-                            <div>
-                                <h3 className="text-lg font-bold text-white">{session.company}</h3>
-                                <div className="flex items-center gap-2 text-sm text-slate-400 mt-0.5">
-                                    <Briefcase size={14} />
-                                    <span>{session.role}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-6 w-full md:w-auto mt-4 md:mt-0 pt-4 md:pt-0 border-t md:border-t-0 border-slate-800 justify-between md:justify-end">
-                        <div className="flex flex-col items-start md:items-end flex-initial">
-                            <div className="flex items-center gap-2 text-slate-300">
-                                <Calendar size={14} className="text-slate-500" />
-                                <span className="text-sm font-medium">
-                                    {session.date ? format(parseISO(session.date), 'MMM d, yyyy') : 'Unknown Date'}
-                                </span>
-                            </div>
-                            <div className="flex items-center gap-2 text-sm text-slate-400 mt-1">
-                                <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
-                                  session.crackProbability === 'Highly Likely' || session.crackProbability === 'High' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 
-                                  session.crackProbability === 'Possible' || session.crackProbability === 'Moderate' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 
-                                  'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                                }`}>
-                                    {session.crackProbability} Probability
-                                </span>
-                            </div>
-                        </div>
-
-                        <div className="h-10 w-px bg-slate-800 hidden md:block mx-2"></div>
-
-                        <div className="flex flex-col items-center justify-center min-w-[60px]">
-                            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Score</span>
-                            <div className={`text-2xl font-black ${getScoreColor(session.score)}`}>
-                                {session.score}
-                            </div>
-                        </div>
-                    </div>
-                </motion.div>
-            ))}
+      {pastSessions.length > 0 && (
+        <div className="relative">
+          <Search
+            size={16}
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
+          />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Filter history by company, role, or resume filename..."
+            className="w-full bg-[#050912] border border-[#16223b] rounded-xl py-3 pl-11 pr-4 text-sm text-white placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500 outline-none"
+          />
         </div>
       )}
 
-      {/* Modal */}
+      {pastSessions.length === 0 ? (
+        <div className="amoled-surface rounded-2xl p-12 text-center">
+          <div className="w-16 h-16 bg-black border border-[#16223b] rounded-2xl flex items-center justify-center mx-auto mb-5 text-blue-400">
+            <Activity size={28} />
+          </div>
+          <h3 className="text-xl font-bold text-white mb-2">
+            No completed interviews yet
+          </h3>
+          <p className="text-sm text-slate-400 max-w-md mx-auto mb-7">
+            Your AES-256-GCM encrypted interview archive will appear here as
+            soon as you finish your first mock session.
+          </p>
+          <button
+            type="button"
+            onClick={() => onNavigate('setup')}
+            className="amoled-btn-primary text-white px-6 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer"
+          >
+            Start Your First Interview
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {filteredSessions.map((session, i) => (
+            <motion.button
+              type="button"
+              key={session.id || i}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.03 }}
+              onClick={() => setSelectedSession(session)}
+              className="w-full text-left amoled-surface rounded-2xl p-5 flex flex-col md:flex-row gap-5 justify-between items-start md:items-center hover:border-blue-500/50 transition-colors cursor-pointer"
+            >
+              <div className="flex items-center gap-4 min-w-0">
+                <div className="w-11 h-11 bg-black border border-[#16223b] rounded-xl flex items-center justify-center text-blue-400 shrink-0">
+                  <Building2 size={20} />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-base font-bold text-white truncate">
+                    {session.company}
+                  </h3>
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400 mt-1">
+                    <span>{session.role}</span>
+                    {session.resumeUsed && (
+                      <>
+                        <span aria-hidden="true">·</span>
+                        <span className="text-blue-300">
+                          Resume: {session.resumeUsed}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between md:justify-end gap-6 w-full md:w-auto pt-3 md:pt-0 border-t md:border-t-0 border-[#16223b]">
+                <div className="text-left md:text-right">
+                  <div className="flex items-center gap-1.5 text-xs text-slate-300 font-mono tabular-nums">
+                    <Calendar size={13} className="text-slate-500" />
+                    <span>
+                      {session.date
+                        ? format(parseISO(session.date), 'MMM d, yyyy')
+                        : 'Unknown Date'}
+                    </span>
+                  </div>
+                  <div
+                    className={`text-xs font-semibold mt-1 ${getProbColor(
+                      session.crackProbability
+                    )}`}
+                  >
+                    {session.crackProbability} Probability
+                  </div>
+                </div>
+
+                <div className="h-9 w-px bg-[#16223b] hidden md:block" />
+
+                <div className="text-right min-w-[64px]">
+                  <div className="text-[11px] text-slate-500">Score</div>
+                  <div
+                    className={`text-2xl font-extrabold font-mono tabular-nums ${getScoreColor(
+                      session.score
+                    )}`}
+                  >
+                    {session.score}
+                  </div>
+                </div>
+              </div>
+            </motion.button>
+          ))}
+
+          {filteredSessions.length === 0 && (
+            <div className="amoled-surface rounded-2xl p-8 text-center text-sm text-slate-400">
+              No sessions match "{query}".
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Session Detail Modal */}
       <AnimatePresence>
         {selectedSession && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm"
             onClick={() => setSelectedSession(null)}
           >
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              initial={{ opacity: 0, scale: 0.97, y: 16 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              exit={{ opacity: 0, scale: 0.97, y: 16 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-slate-900 border border-slate-800 rounded-2xl p-6 md:p-8 max-w-2xl w-full shadow-2xl overflow-y-auto max-h-[90vh] relative"
+              className="amoled-surface rounded-2xl p-6 md:p-8 max-w-2xl w-full shadow-2xl overflow-y-auto max-h-[90vh] relative"
             >
-              <button 
+              <button
+                type="button"
                 onClick={() => setSelectedSession(null)}
-                className="absolute top-4 right-4 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 p-2 rounded-full transition-colors"
+                className="absolute top-4 right-4 text-slate-400 hover:text-white bg-black border border-[#16223b] p-2 rounded-lg transition-colors cursor-pointer"
               >
-                <X size={20} />
+                <X size={18} />
               </button>
 
               <div className="flex items-center gap-4 mb-6 pr-12">
-                <div className="w-16 h-16 bg-slate-800 rounded-2xl flex items-center justify-center text-blue-400 shrink-0">
-                    <Building2 size={32} />
+                <div className="w-13 h-13 bg-black border border-[#16223b] rounded-xl flex items-center justify-center text-blue-400 shrink-0">
+                  <Building2 size={24} />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-white">{selectedSession.company}</h2>
-                  <p className="text-slate-400 text-lg flex items-center gap-2 mt-1">
-                    <Briefcase size={16} />
+                  <h2 className="text-2xl font-bold text-white">
+                    {selectedSession.company}
+                  </h2>
+                  <p className="text-slate-400 text-sm mt-0.5">
                     {selectedSession.role}
+                    {selectedSession.resumeUsed
+                      ? ` · Resume: ${selectedSession.resumeUsed}`
+                      : ''}
                   </p>
                 </div>
               </div>
-              
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-800">
-                  <div className="text-sm text-slate-400 mb-1">Score</div>
-                  <div className={`text-xl font-bold ${getScoreColor(selectedSession.score)}`}>{selectedSession.score}/100</div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                <div className="bg-black rounded-xl p-4 border border-[#16223b]">
+                  <div className="text-xs text-slate-400 mb-1">Score</div>
+                  <div
+                    className={`text-xl font-bold font-mono tabular-nums ${getScoreColor(
+                      selectedSession.score
+                    )}`}
+                  >
+                    {selectedSession.score}/100
+                  </div>
                 </div>
-                <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-800">
-                  <div className="text-sm text-slate-400 mb-1">Probability</div>
-                  <div className={`text-sm font-bold ${
-                     selectedSession.crackProbability === 'Highly Likely' || selectedSession.crackProbability === 'High' ? 'text-emerald-400' : 
-                     selectedSession.crackProbability === 'Possible' || selectedSession.crackProbability === 'Moderate' ? 'text-amber-400' : 'text-rose-400'
-                  }`}>
+                <div className="bg-black rounded-xl p-4 border border-[#16223b]">
+                  <div className="text-xs text-slate-400 mb-1">Outcome</div>
+                  <div
+                    className={`text-sm font-bold ${getProbColor(
+                      selectedSession.crackProbability
+                    )}`}
+                  >
                     {selectedSession.crackProbability}
                   </div>
                 </div>
-                <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-800 col-span-2">
-                  <div className="text-sm text-slate-400 mb-1">Date</div>
-                  <div className="text-slate-200">
-                    {selectedSession.date ? format(parseISO(selectedSession.date), 'MMM d, yyyy h:mm a') : 'Unknown'}
+                <div className="bg-black rounded-xl p-4 border border-[#16223b] col-span-2">
+                  <div className="text-xs text-slate-400 mb-1">Completed</div>
+                  <div className="text-sm text-slate-200 font-mono tabular-nums">
+                    {selectedSession.date
+                      ? format(
+                          parseISO(selectedSession.date),
+                          'MMM d, yyyy h:mm a'
+                        )
+                      : 'Unknown'}
                   </div>
                 </div>
               </div>
 
-              <div className="space-y-6">
+              {selectedSession.skillScores && (
+                <div className="mb-6 bg-black border border-[#16223b] rounded-xl p-4 space-y-3">
+                  <div className="text-xs font-bold text-blue-400">
+                    Skill Dimension Breakdown
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {[
+                      {
+                        label: 'Technical Depth',
+                        val: selectedSession.skillScores.technicalDepth,
+                      },
+                      {
+                        label: 'Resume Alignment',
+                        val: selectedSession.skillScores.resumeAlignment,
+                      },
+                      {
+                        label: 'System Architecture',
+                        val: selectedSession.skillScores.systemArchitecture,
+                      },
+                      {
+                        label: 'Communication',
+                        val: selectedSession.skillScores.communication,
+                      },
+                      {
+                        label: 'Problem Solving',
+                        val: selectedSession.skillScores.problemSolving,
+                      },
+                    ].map((s) => (
+                      <div key={s.label} className="space-y-1">
+                        <div className="flex justify-between text-xs">
+                          <span className="text-slate-300">{s.label}</span>
+                          <span className="font-mono tabular-nums text-cyan-300">
+                            {s.val}%
+                          </span>
+                        </div>
+                        <div className="h-1.5 bg-[#050912] rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-blue-600 to-cyan-400 rounded-full"
+                            style={{ width: `${Math.min(100, s.val)}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-5">
                 <div>
-                  <h3 className="text-lg font-bold text-white mb-3">Overall Summary</h3>
-                  <div className="bg-slate-800/30 p-4 rounded-xl border border-slate-800">
-                    <p className="text-slate-300 leading-relaxed">
-                      {selectedSession.overallSummary || "Summary details are not available for this session."}
+                  <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
+                    <FileText size={15} className="text-blue-400" />
+                    <span>Executive Summary</span>
+                  </h3>
+                  <div className="bg-black p-4 rounded-xl border border-[#16223b]">
+                    <p className="text-sm text-slate-300 leading-relaxed">
+                      {selectedSession.overallSummary ||
+                        'Summary details are not available for this session.'}
                     </p>
                   </div>
                 </div>
 
-                {selectedSession.improvements && selectedSession.improvements.length > 0 && (
-                  <div>
-                    <h3 className="text-lg flex items-center gap-2 font-bold text-amber-400 mb-3">
-                      <Target size={20} />
-                      Areas for Improvement
-                    </h3>
-                    <ul className="space-y-2">
-                      {selectedSession.improvements.map((item, idx) => (
-                         <li key={idx} className="flex gap-3 text-slate-300">
-                           <span className="text-amber-500/50 font-bold mt-0.5">•</span>
-                           <span>{item}</span>
-                         </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+                {selectedSession.improvements &&
+                  selectedSession.improvements.length > 0 && (
+                    <div>
+                      <h3 className="text-sm flex items-center gap-2 font-bold text-cyan-400 mb-2">
+                        <Target size={15} />
+                        <span>Priority Improvements</span>
+                      </h3>
+                      <ul className="space-y-2 text-xs text-slate-300 bg-black p-4 rounded-xl border border-[#16223b]">
+                        {selectedSession.improvements.map((item, idx) => (
+                          <li key={idx} className="flex gap-2.5">
+                            <span className="text-blue-400 font-bold">•</span>
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
 
-                {selectedSession.studyTopics && selectedSession.studyTopics.length > 0 && (
-                  <div>
-                    <h3 className="text-lg flex items-center gap-2 font-bold text-emerald-400 mb-3">
-                      <CheckCircle2 size={20} />
-                      Recommended Study Topics
-                    </h3>
-                    <ul className="space-y-2">
-                      {selectedSession.studyTopics.map((item, idx) => (
-                         <li key={idx} className="flex gap-3 text-slate-300">
-                           <span className="text-emerald-500/50 font-bold mt-0.5">•</span>
-                           <span>{item}</span>
-                         </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+                {selectedSession.studyTopics &&
+                  selectedSession.studyTopics.length > 0 && (
+                    <div>
+                      <h3 className="text-sm flex items-center gap-2 font-bold text-emerald-400 mb-2">
+                        <CheckCircle2 size={15} />
+                        <span>Recommended Study Topics</span>
+                      </h3>
+                      <ul className="space-y-2 text-xs text-slate-300 bg-black p-4 rounded-xl border border-[#16223b]">
+                        {selectedSession.studyTopics.map((item, idx) => (
+                          <li key={idx} className="flex gap-2.5">
+                            <span className="text-emerald-400 font-bold">•</span>
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
               </div>
             </motion.div>
           </motion.div>
