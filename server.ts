@@ -1,7 +1,7 @@
 import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
-import { GoogleGenAI, Type } from '@google/genai';
+import { GoogleGenAI, Type, ThinkingLevel } from '@google/genai';
 import mammoth from 'mammoth';
 import { apiManager } from './src/lib/ApiManager';
 
@@ -38,9 +38,9 @@ function sanitizePayload(value: any, skipKeys = new Set(['base64Data'])): any {
   return value;
 }
 
-async function generateContentWithRetry(options: any) {
+async function generateContentWithRetry(options: any, timeoutMs = 20000) {
   let attempts = 0;
-  const maxRetries = Math.max(4, apiManager.getKeysLength() * 3);
+  const maxRetries = Math.max(3, Math.min(6, apiManager.getKeysLength() * 2 + 1));
 
   const modelsToTry = [
     options.model || 'gemini-4-hydrogen',
@@ -63,7 +63,14 @@ async function generateContentWithRetry(options: any) {
       const currentModel = modelsToTry[attempts % modelsToTry.length];
       const currentOptions = { ...options, model: currentModel };
 
-      return await ai.models.generateContent(currentOptions);
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Request timeout')), timeoutMs)
+      );
+
+      return (await Promise.race([
+        ai.models.generateContent(currentOptions),
+        timeoutPromise,
+      ])) as any;
     } catch (error: any) {
       const errString =
         String(error) +
@@ -83,7 +90,8 @@ async function generateContentWithRetry(options: any) {
         continue;
       } else if (
         errString.includes('404') ||
-        errString.includes('NOT_FOUND')
+        errString.includes('NOT_FOUND') ||
+        errString.includes('Request timeout')
       ) {
         continue;
       } else if (
@@ -94,7 +102,7 @@ async function generateContentWithRetry(options: any) {
         errString.includes('503')
       ) {
         apiManager.nextKey();
-        await new Promise((r) => setTimeout(r, 1200));
+        await new Promise((r) => setTimeout(r, 800));
       } else {
         apiManager.nextKey();
       }
@@ -345,6 +353,7 @@ Generate 4 specific "tailoredAngles" representing sharp, realistic interview que
         model: 'gemini-4-hydrogen',
         contents,
         config: {
+          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
           responseMimeType: 'application/json',
           responseSchema: {
             type: Type.OBJECT,
@@ -517,10 +526,16 @@ Conversation so far:
 
       chatPrompt += `\nInterviewer:`;
 
-      const response = await generateContentWithRetry({
-        model: 'gemini-4-hydrogen',
-        contents: chatPrompt,
-      });
+      const response = await generateContentWithRetry(
+        {
+          model: 'gemini-4-hydrogen',
+          contents: chatPrompt,
+          config: {
+            thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+          },
+        },
+        15000
+      );
 
       if (!response?.text) {
         throw new Error('Empty response from AI');
@@ -575,6 +590,7 @@ Return ONLY a JSON array of 5 strings.`;
         model: 'gemini-4-hydrogen',
         contents: prompt,
         config: {
+          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
           responseMimeType: 'application/json',
           responseSchema: {
             type: Type.ARRAY,
@@ -658,11 +674,13 @@ Transcript:
         evalPrompt += `${msg.role === 'interviewer' ? 'Interviewer' : 'Candidate'}: ${msg.text}\n`;
       });
 
-      const response = await generateContentWithRetry({
-        model: 'gemini-4-hydrogen',
-        contents: evalPrompt,
-        config: {
-          responseMimeType: 'application/json',
+      const response = await generateContentWithRetry(
+        {
+          model: 'gemini-4-hydrogen',
+          contents: evalPrompt,
+          config: {
+            thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+            responseMimeType: 'application/json',
           responseSchema: {
             type: Type.OBJECT,
             properties: {
@@ -706,8 +724,10 @@ Transcript:
               },
             },
           },
+          },
         },
-      });
+        20000
+      );
 
       const defaultReport = {
         crackProbability: 'Needs Work',
@@ -781,7 +801,10 @@ Respond ONLY in JSON format with:
       const response = await generateContentWithRetry({
         model: 'gemini-4-hydrogen',
         contents: prompt,
-        config: { responseMimeType: 'application/json' },
+        config: {
+          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+          responseMimeType: 'application/json',
+        },
       });
 
       const parsed = safeJsonParse(response?.text || '', {
@@ -832,7 +855,10 @@ Respond ONLY in JSON format:
       const response = await generateContentWithRetry({
         model: 'gemini-4-hydrogen',
         contents: prompt,
-        config: { responseMimeType: 'application/json' },
+        config: {
+          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+          responseMimeType: 'application/json',
+        },
       });
 
       const parsed = safeJsonParse(response?.text || '', {

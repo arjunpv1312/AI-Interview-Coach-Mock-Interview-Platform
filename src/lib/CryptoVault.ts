@@ -26,6 +26,7 @@ export type VaultUsersMap = Record<string, VaultUserRecord>;
 export interface VaultSession {
   email: string;
   timestamp: number;
+  lastActivityAt?: number;
 }
 
 export interface SecurityAuditSnapshot {
@@ -37,9 +38,12 @@ export interface SecurityAuditSnapshot {
   plaintextLeaksDetected: number;
   encryptedRecordsCount: number;
   passwordKdf: string;
+  inactivityTimeoutMinutes: number;
   ciphertextPreview: string;
   lastCheckedAt: string;
 }
+
+export const INACTIVITY_LOCK_TIMEOUT_MS = 15 * 60 * 1000;
 
 const VAULT_USERS_KEY = 'ic_vault_users';
 const VAULT_SESSION_KEY = 'ic_vault_session';
@@ -53,6 +57,7 @@ const PBKDF2_ITERATIONS = 120000;
 
 let inMemoryFallbackKey: CryptoKey | null = null;
 let keyStoredInIdb = false;
+let lastSessionExpiredByInactivity = false;
 
 function bytesToBase64(bytes: Uint8Array): string {
   let binary = '';
@@ -400,15 +405,59 @@ export async function ensureFederatedOrDemoUser(
   return user;
 }
 
+export function isVaultSessionInactive(
+  session: VaultSession,
+  now = Date.now()
+): boolean {
+  const lastActive = session.lastActivityAt ?? session.timestamp;
+  return now - lastActive >= INACTIVITY_LOCK_TIMEOUT_MS;
+}
+
+export function consumeInactivityLockFlag(): boolean {
+  const flag = lastSessionExpiredByInactivity;
+  lastSessionExpiredByInactivity = false;
+  return flag;
+}
+
 export async function saveVaultSession(email: string): Promise<void> {
-  const session: VaultSession = { email, timestamp: Date.now() };
+  const now = Date.now();
+  lastSessionExpiredByInactivity = false;
+  const session: VaultSession = {
+    email,
+    timestamp: now,
+    lastActivityAt: now,
+  };
   localStorage.setItem(VAULT_SESSION_KEY, await encryptPayload(session));
+}
+
+export async function touchVaultSessionActivity(): Promise<void> {
+  const raw = localStorage.getItem(VAULT_SESSION_KEY);
+  if (!raw) return;
+  const session = await decryptPayload<VaultSession | null>(raw, null);
+  if (!session) return;
+  if (isVaultSessionInactive(session)) {
+    clearVaultSession();
+    lastSessionExpiredByInactivity = true;
+    return;
+  }
+  const updated: VaultSession = {
+    ...session,
+    lastActivityAt: Date.now(),
+  };
+  localStorage.setItem(VAULT_SESSION_KEY, await encryptPayload(updated));
 }
 
 export async function getVaultSession(): Promise<VaultSession | null> {
   await initializeVault();
   const raw = localStorage.getItem(VAULT_SESSION_KEY);
-  return decryptPayload<VaultSession | null>(raw, null);
+  const session = await decryptPayload<VaultSession | null>(raw, null);
+  if (!session) return null;
+  if (isVaultSessionInactive(session)) {
+    clearVaultSession();
+    lastSessionExpiredByInactivity = true;
+    return null;
+  }
+  return session;
 }
 
 export function clearVaultSession(): void {
@@ -496,6 +545,7 @@ export async function getSecurityAuditSnapshot(): Promise<SecurityAuditSnapshot>
     plaintextLeaksDetected: plaintextLeaks,
     encryptedRecordsCount: encryptedCount,
     passwordKdf: `PBKDF2-HMAC-SHA-256 (${PBKDF2_ITERATIONS.toLocaleString()} iterations)`,
+    inactivityTimeoutMinutes: INACTIVITY_LOCK_TIMEOUT_MS / 60000,
     ciphertextPreview,
     lastCheckedAt: new Date().toISOString(),
   };

@@ -26,9 +26,15 @@ import {
 
 interface AuthViewProps {
   onLogin: (user: User, rememberMe: boolean) => void;
+  lockNotice?: string | null;
+  onDismissLockNotice?: () => void;
 }
 
-export function AuthView({ onLogin }: AuthViewProps) {
+export function AuthView({
+  onLogin,
+  lockNotice,
+  onDismissLockNotice,
+}: AuthViewProps) {
   const [isLogin, setIsLogin] = useState(true);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [email, setEmail] = useState('');
@@ -320,6 +326,24 @@ export function AuthView({ onLogin }: AuthViewProps) {
                   : 'Your profile and resume are encrypted locally before saving.'}
             </p>
           </div>
+
+          {lockNotice && (
+            <div className="p-3.5 rounded-xl bg-blue-600/10 border border-blue-500/40 text-blue-200 text-xs flex items-start justify-between gap-3">
+              <div className="flex items-start gap-2.5">
+                <Lock size={15} className="text-blue-400 shrink-0 mt-0.5" />
+                <span className="leading-relaxed">{lockNotice}</span>
+              </div>
+              {onDismissLockNotice && (
+                <button
+                  type="button"
+                  onClick={onDismissLockNotice}
+                  className="text-slate-400 hover:text-white text-xs font-semibold shrink-0 cursor-pointer"
+                >
+                  Dismiss
+                </button>
+              )}
+            </div>
+          )}
 
           {!isForgotPassword && (
             <div className="space-y-3">

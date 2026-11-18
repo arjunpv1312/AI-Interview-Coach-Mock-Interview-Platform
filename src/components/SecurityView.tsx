@@ -40,9 +40,14 @@ interface ServerSecurityStatus {
 interface SecurityViewProps {
   onNavigate: (view: any) => void;
   onVaultWiped?: () => void;
+  onLockNow?: () => void;
 }
 
-export function SecurityView({ onNavigate, onVaultWiped }: SecurityViewProps) {
+export function SecurityView({
+  onNavigate,
+  onVaultWiped,
+  onLockNow,
+}: SecurityViewProps) {
   const [auditing, setAuditing] = useState(true);
   const [clientAudit, setClientAudit] = useState<SecurityAuditSnapshot | null>(
     null
@@ -288,6 +293,10 @@ export function SecurityView({ onNavigate, onVaultWiped }: SecurityViewProps) {
               label="Session Token Storage"
               value="Encrypted AES-256-GCM envelope"
             />
+            <AuditRow
+              label="Inactivity Auto-Lock"
+              value={`${clientAudit?.inactivityTimeoutMinutes || 15} min idle timeout active`}
+            />
           </div>
         </div>
 
@@ -399,6 +408,16 @@ export function SecurityView({ onNavigate, onVaultWiped }: SecurityViewProps) {
                   : 'Rotate AES-256-GCM Key & Re-Encrypt'}
               </span>
             </button>
+            {onLockNow && (
+              <button
+                type="button"
+                onClick={onLockNow}
+                className="px-4 py-2.5 rounded-xl bg-black hover:bg-[#0a1120] border border-blue-500/40 text-blue-300 text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer"
+              >
+                <Lock size={14} />
+                <span>Lock Vault Now</span>
+              </button>
+            )}
           </div>
 
           <div>

@@ -412,27 +412,50 @@ export function LiveInterviewView({
     history: currentHistory,
   });
 
-  // Initial greeting and resume-grounded opening question
-  const hasFetchedInitialRef = useRef(false);
-  useEffect(() => {
-    const fetchNextResponse = async (currentHistory: ChatMessage[]) => {
+  const postInteractWithRetry = async (
+    currentHistory: ChatMessage[],
+    maxAttempts = 2
+  ) => {
+    let lastErr: any = null;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 25000);
       try {
         const res = await fetch('/api/interact', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(buildInteractPayload(currentHistory)),
+          signal: controller.signal,
         });
-
-        let data;
+        clearTimeout(timer);
         const textResponse = await res.text();
         try {
-          data = JSON.parse(textResponse);
+          return JSON.parse(textResponse);
         } catch {
-          data = {
+          return {
             error: true,
-            text: "I'm having trouble connecting to the server. Let's try again.",
+            text: "I'm having trouble connecting to the server. Please try again.",
           };
         }
+      } catch (err) {
+        clearTimeout(timer);
+        lastErr = err;
+        if (attempt < maxAttempts - 1) {
+          await new Promise((r) => setTimeout(r, 700));
+        }
+      }
+    }
+    throw lastErr || new Error('Connection timed out');
+  };
+
+  // Initial greeting and resume-grounded opening question
+  const hasFetchedInitialRef = useRef(false);
+  useEffect(() => {
+    let mounted = true;
+    const fetchNextResponse = async (currentHistory: ChatMessage[]) => {
+      try {
+        const data = await postInteractWithRetry(currentHistory);
+        if (!mounted) return;
 
         if (
           data.error ||
@@ -445,15 +468,18 @@ export function LiveInterviewView({
         } else {
           const aiMessage = {
             role: 'interviewer' as const,
-            text: data.text || 'Network error',
+            text: data.text || 'Let us begin. Could you walk me through your background?',
           };
           setHistory((prev) => [...prev, aiMessage]);
         }
         setIsThinking(false);
-        speakText(data.text);
-      } catch (err) {
-        console.error(err);
+        if (data.text) speakText(data.text);
+      } catch (err: any) {
+        if (!mounted) return;
+        console.warn('Initial prompt fetch retry exhausted:', err?.message || err);
         setIsThinking(false);
+        setErrorToast('Connection interrupted. Click "Request Hint" or type a response to continue.');
+        setTimeout(() => setErrorToast(''), 6000);
       }
     };
 
@@ -461,6 +487,9 @@ export function LiveInterviewView({
       hasFetchedInitialRef.current = true;
       fetchNextResponse([]);
     }
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -650,22 +679,7 @@ export function LiveInterviewView({
     setTurnCount((prev) => prev + 1);
 
     try {
-      const res = await fetch('/api/interact', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(buildInteractPayload(newHistory)),
-      });
-
-      let data;
-      const textResponse = await res.text();
-      try {
-        data = JSON.parse(textResponse);
-      } catch {
-        data = {
-          error: true,
-          text: "I'm having trouble connecting right now. Please try again.",
-        };
-      }
+      const data = await postInteractWithRetry(newHistory);
 
       if (
         data.error ||
@@ -675,6 +689,7 @@ export function LiveInterviewView({
       ) {
         setHistory((prev) => prev.slice(0, -1));
         setAnswerText(finalAnswer);
+        persistedTranscriptRef.current = finalAnswer;
         setErrorToast(
           data.text || 'API connection failed. Please try submitting again.'
         );
@@ -682,16 +697,21 @@ export function LiveInterviewView({
       } else {
         const aiMessage = {
           role: 'interviewer' as const,
-          text: data.text || 'Network error',
+          text: data.text || 'Could you elaborate a bit further on that?',
         };
         setHistory((prev) => [...prev, aiMessage]);
       }
 
       setIsThinking(false);
-      speakText(data.text);
-    } catch (e) {
+      if (data.text) speakText(data.text);
+    } catch (e: any) {
+      console.warn('Interaction request failed:', e?.message || e);
+      setHistory((prev) => prev.slice(0, -1));
+      setAnswerText(finalAnswer);
+      persistedTranscriptRef.current = finalAnswer;
       setIsThinking(false);
-      console.error(e);
+      setErrorToast('Temporary network interruption. Your answer is preserved—please click Send Response.');
+      setTimeout(() => setErrorToast(''), 6000);
     }
   };
 

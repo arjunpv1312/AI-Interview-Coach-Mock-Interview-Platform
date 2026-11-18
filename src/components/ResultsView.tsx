@@ -105,45 +105,61 @@ export function ResultsView({
 
   useEffect(() => {
     let isMounted = true;
+    const fallbackEval = {
+      crackProbability: 'Needs Work',
+      overallScore: 0,
+      overallSummary:
+        'Evaluation could not reach the AI engine due to a temporary network error. Your transcript was preserved.',
+      speakingSkills: 'Transcript captured safely.',
+      technicalSkills: 'Please retry evaluation or retake a round.',
+      deepDive: 'Temporary network interruption during scoring.',
+      skillScores: {
+        technicalDepth: 0,
+        resumeAlignment: 0,
+        systemArchitecture: 0,
+        communication: 0,
+        problemSolving: 0,
+      },
+      questionReviews: [],
+      improvements: ['Check connection and run another round when ready.'],
+      studyTopics: ['System Design Fundamentals'],
+    };
+
     const fetchEvaluation = async () => {
       try {
-        const res = await fetch('/api/evaluate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            company: session.company,
-            role: session.role,
-            type: session.type,
-            difficulty: session.difficulty,
-            resumeProfile: session.resumeProfile || null,
-            history: session.history,
-          }),
-        });
+        let res: Response | null = null;
+        for (let attempt = 0; attempt < 2; attempt++) {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 25000);
+          try {
+            res = await fetch('/api/evaluate', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                company: session.company,
+                role: session.role,
+                type: session.type,
+                difficulty: session.difficulty,
+                resumeProfile: session.resumeProfile || null,
+                history: session.history,
+              }),
+              signal: controller.signal,
+            });
+            clearTimeout(timer);
+            break;
+          } catch (err) {
+            clearTimeout(timer);
+            if (attempt === 1) throw err;
+            await new Promise((r) => setTimeout(r, 700));
+          }
+        }
 
-        const textResponse = await res.text();
+        const textResponse = res ? await res.text() : '';
         let data;
         try {
           data = JSON.parse(textResponse);
         } catch {
-          data = {
-            crackProbability: 'Needs Work',
-            overallScore: 0,
-            overallSummary:
-              'We encountered a parsing error while generating the scorecard.',
-            speakingSkills: 'N/A',
-            technicalSkills: 'N/A',
-            deepDive: 'N/A',
-            skillScores: {
-              technicalDepth: 0,
-              resumeAlignment: 0,
-              systemArchitecture: 0,
-              communication: 0,
-              problemSolving: 0,
-            },
-            questionReviews: [],
-            improvements: ['Retry the interview session.'],
-            studyTopics: ['System Design Fundamentals'],
-          };
+          data = fallbackEval;
         }
 
         if (isMounted) {
@@ -153,8 +169,11 @@ export function ResultsView({
             onSaveScore(data);
           }
         }
-      } catch (e) {
-        console.error(e);
+      } catch (e: any) {
+        console.warn('Evaluation fetch failed:', e?.message || e);
+        if (isMounted) {
+          setEvaluation(fallbackEval);
+        }
       } finally {
         if (isMounted) setLoading(false);
       }

@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   ViewState,
   User,
@@ -11,11 +11,14 @@ import {
   ThemeVariant,
 } from './types';
 import {
+  INACTIVITY_LOCK_TIMEOUT_MS,
   clearVaultSession,
+  consumeInactivityLockFlag,
   getVaultSession,
   getVaultUser,
   initializeVault,
   saveVaultSession,
+  touchVaultSessionActivity,
   updateVaultUser,
 } from './lib/CryptoVault';
 import { DashboardView } from './components/DashboardView';
@@ -60,6 +63,28 @@ export default function App() {
   const [currentSession, setCurrentSession] =
     useState<InterviewSession | null>(null);
   const [themeDropdown, setThemeDropdown] = useState(false);
+  const [lockNotice, setLockNotice] = useState<string | null>(null);
+  const [idleSecondsRemaining, setIdleSecondsRemaining] = useState<number | null>(
+    null
+  );
+
+  const lastActivityRef = useRef<number>(Date.now());
+  const lastVaultTouchRef = useRef<number>(0);
+
+  const lockVaultWithNotice = useCallback((reason: string) => {
+    clearVaultSession();
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    setUser(null);
+    setSessionParams(null);
+    setCurrentSession(null);
+    setSetupPrefill(null);
+    setThemeDropdown(false);
+    setIdleSecondsRemaining(null);
+    setLockNotice(reason);
+    setView('auth');
+  }, []);
 
   const launchSetupWithPrefill = (prefill: Partial<InterviewConfig>) => {
     setSetupPrefill(prefill);
@@ -107,6 +132,7 @@ export default function App() {
             const dbUser = await getVaultUser(session.email);
             if (dbUser && active) {
               setUser(dbUser);
+              lastActivityRef.current = Date.now();
               document.documentElement.dataset.theme =
                 dbUser.themePreference || 'amoled';
               setView('dashboard');
@@ -114,6 +140,10 @@ export default function App() {
           } else {
             clearVaultSession();
           }
+        } else if (consumeInactivityLockFlag() && active) {
+          setLockNotice(
+            'Your previous session was locked after 15 minutes of inactivity. Sign in again to unlock your encrypted vault.'
+          );
         }
       } catch (e) {
         console.warn('Vault hydration error:', e);
@@ -128,6 +158,82 @@ export default function App() {
       active = false;
     };
   }, []);
+
+  // 15-minute inactivity auto-lock monitor for client-side CryptoVault security
+  useEffect(() => {
+    if (!user) {
+      setIdleSecondsRemaining(null);
+      return;
+    }
+
+    lastActivityRef.current = Date.now();
+    lastVaultTouchRef.current = Date.now();
+
+    const recordActivity = () => {
+      const now = Date.now();
+      // Check first if the user woke from sleep past the 15-min limit
+      if (now - lastActivityRef.current >= INACTIVITY_LOCK_TIMEOUT_MS) {
+        lockVaultWithNotice(
+          'Vault auto-locked after 15 minutes of inactivity. Sign in again to continue.'
+        );
+        return;
+      }
+
+      lastActivityRef.current = now;
+      setIdleSecondsRemaining(null);
+
+      // Persist sliding activity timestamp into encrypted vault session at most every 30s
+      if (now - lastVaultTouchRef.current >= 30_000) {
+        lastVaultTouchRef.current = now;
+        touchVaultSessionActivity().catch(() => {});
+      }
+    };
+
+    const checkInactivity = () => {
+      const elapsed = Date.now() - lastActivityRef.current;
+      const remainingMs = INACTIVITY_LOCK_TIMEOUT_MS - elapsed;
+      if (remainingMs <= 0) {
+        lockVaultWithNotice(
+          'Vault auto-locked after 15 minutes of inactivity. Sign in again to continue.'
+        );
+        return;
+      }
+      if (remainingMs <= 60_000) {
+        setIdleSecondsRemaining(Math.ceil(remainingMs / 1000));
+      } else {
+        setIdleSecondsRemaining(null);
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkInactivity();
+      }
+    };
+
+    const activityEvents: (keyof WindowEventMap)[] = [
+      'mousemove',
+      'mousedown',
+      'keydown',
+      'touchstart',
+      'scroll',
+      'click',
+    ];
+
+    activityEvents.forEach((evt) =>
+      window.addEventListener(evt, recordActivity, { passive: true })
+    );
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    const intervalId = setInterval(checkInactivity, 5000);
+
+    return () => {
+      activityEvents.forEach((evt) =>
+        window.removeEventListener(evt, recordActivity)
+      );
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(intervalId);
+    };
+  }, [user, lockVaultWithNotice]);
 
   const handleStartInterview = (config: InterviewConfig) => {
     if ('speechSynthesis' in window) {
@@ -331,6 +437,35 @@ export default function App() {
         </header>
       )}
 
+      {/* Pre-lock warning banner in final 60 seconds of inactivity */}
+      {user && idleSecondsRemaining !== null && (
+        <div className="relative z-40 bg-blue-950/90 border-b border-blue-500/40 px-4 py-2.5 text-xs text-blue-100">
+          <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2 font-medium">
+              <Lock size={14} className="text-cyan-400 shrink-0" />
+              <span>
+                Inactivity detected — CryptoVault session will lock in{' '}
+                <strong className="font-mono tabular-nums text-cyan-300">
+                  {idleSecondsRemaining}s
+                </strong>
+                .
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                lastActivityRef.current = Date.now();
+                setIdleSecondsRemaining(null);
+                touchVaultSessionActivity().catch(() => {});
+              }}
+              className="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold cursor-pointer whitespace-nowrap"
+            >
+              Stay Signed In
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Main Content */}
       <main
         className={`relative z-10 flex-1 flex flex-col ${
@@ -352,7 +487,11 @@ export default function App() {
               className="flex-1 flex flex-col"
             >
               <AuthView
+                lockNotice={lockNotice}
+                onDismissLockNotice={() => setLockNotice(null)}
                 onLogin={async (u, rememberMe) => {
+                  setLockNotice(null);
+                  lastActivityRef.current = Date.now();
                   if (rememberMe) {
                     await saveVaultSession(u.email);
                   } else {
@@ -622,10 +761,17 @@ export default function App() {
             >
               <SecurityView
                 onNavigate={setView}
+                onLockNow={() =>
+                  lockVaultWithNotice(
+                    'Vault locked manually. Sign in again to decrypt your session.'
+                  )
+                }
                 onVaultWiped={() => {
                   setUser(null);
                   setSessionParams(null);
                   setCurrentSession(null);
+                  setSetupPrefill(null);
+                  setLockNotice(null);
                   setView('auth');
                 }}
               />
