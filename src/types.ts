@@ -101,6 +101,13 @@ export interface User {
   bookmarkedQuestionIds?: string[];
 }
 
+export type ExperienceTier =
+  | 'Entry'
+  | 'Mid-Level'
+  | 'Senior'
+  | 'Staff'
+  | 'Principal';
+
 export interface Question {
   id: string;
   text: string;
@@ -108,6 +115,8 @@ export interface Question {
   role: string;
   difficulty: 'Easy' | 'Medium' | 'Hard';
   category: 'Technical' | 'Behavioural' | 'System Design';
+  level?: ExperienceTier;
+  cultureFocus?: string;
   sampleAnswer?: string;
   tips?: string[];
   timesAsked?: number;
@@ -137,6 +146,7 @@ export interface InterviewSession {
   role: string;
   type: string;
   difficulty: string;
+  experience?: number;
   startTime: string;
   history: ChatMessage[];
   resumeProfile?: ResumeProfile | null;

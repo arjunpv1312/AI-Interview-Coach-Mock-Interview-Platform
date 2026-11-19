@@ -1,6 +1,11 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { COMPANIES, ROLES } from '../data';
 import { InterviewConfig, ResumeProfile } from '../types';
+import {
+  getCompanyPlaybook,
+  getLevelCalibration,
+} from '../lib/interviewPlaybooks';
+import { prewarmOpeningTurn, schedulePrewarm } from '../lib/interviewPrewarm';
 import {
   Building2,
   Briefcase,
@@ -16,6 +21,7 @@ import {
   AlertCircle,
   Sparkles,
   ShieldAlert,
+  Compass,
 } from 'lucide-react';
 
 interface SetupViewProps {
@@ -56,6 +62,14 @@ export function SetupView({
     Boolean(config.role) &&
     Boolean(config.type) &&
     Boolean(config.difficulty);
+
+  useEffect(() => {
+    if (!isFormValid || parsing) return;
+    return schedulePrewarm(config, 750);
+  }, [config, isFormValid, parsing]);
+
+  const playbook = getCompanyPlaybook(config.company);
+  const calibration = getLevelCalibration(config.experience, config.difficulty);
 
   const readFileAsBase64 = (file: File): Promise<string> =>
     new Promise((resolve, reject) => {
@@ -113,7 +127,7 @@ export function SetupView({
         resumeProfile: parsedProfile,
         experience:
           typeof parsedProfile.yearsExperience === 'number'
-            ? Math.min(15, Math.max(0, Math.round(parsedProfile.yearsExperience)))
+            ? Math.min(25, Math.max(0, Math.round(parsedProfile.yearsExperience)))
             : prev.experience,
         startWithResume: true,
       }));
@@ -140,6 +154,7 @@ export function SetupView({
       utterance.volume = 0;
       window.speechSynthesis.speak(utterance);
     }
+    void prewarmOpeningTurn(config);
     if (saveToProfile && config.resumeProfile && onSaveResume) {
       onSaveResume(config.resumeProfile);
     }
@@ -476,9 +491,9 @@ export function SetupView({
             </div>
           </div>
 
-          {/* Experience Slider */}
+          {/* Experience Slider (0–25+ Years) */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between text-xs font-semibold text-[#362f47] dark:text-[#d8d0ea]">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-semibold text-[#362f47] dark:text-[#d8d0ea]">
               <label
                 htmlFor="setup-experience"
                 className="flex items-center gap-2"
@@ -489,15 +504,15 @@ export function SetupView({
                 />
                 <span>Experience Calibration</span>
               </label>
-              <span className="font-mono text-[#140f1f] dark:text-white tabular-nums">
-                {config.experience} years
+              <span className="font-mono text-violet-700 dark:text-violet-300 tabular-nums">
+                {calibration.yearsDisplay} · {calibration.tier}
               </span>
             </div>
             <input
               id="setup-experience"
               type="range"
               min="0"
-              max="15"
+              max="25"
               value={config.experience}
               onChange={(e) =>
                 setConfig({
@@ -508,10 +523,15 @@ export function SetupView({
               className="w-full accent-violet-600 h-2 bg-[#f3effb] dark:bg-[#120b1f] rounded-lg appearance-none cursor-pointer"
             />
             <div className="flex justify-between text-[11px] text-[#5a5170] dark:text-[#a69cbe]">
-              <span>Entry (0 yrs)</span>
-              <span>Mid-Level (5 yrs)</span>
-              <span>Staff / Principal (15+ yrs)</span>
+              <span>0y Entry</span>
+              <span>3y Mid</span>
+              <span>7y Senior</span>
+              <span>12y Staff</span>
+              <span>25+y Principal</span>
             </div>
+            <p className="text-[11px] text-[#5a5170] dark:text-[#a69cbe] leading-relaxed">
+              Calibrated Bar: <span className="font-semibold text-[#140f1f] dark:text-white">{calibration.titleLabel}</span> — {calibration.questionScope}
+            </p>
           </div>
 
           {/* Custom Difficulty */}
@@ -543,6 +563,35 @@ export function SetupView({
                   {diff}
                 </button>
               ))}
+            </div>
+          </div>
+
+          {/* Authentic Company Interview Pattern Brief */}
+          <div className="rounded-xl bg-white dark:bg-black border border-[#e4ddf5] dark:border-[#26193f] p-4 space-y-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-xs font-bold text-[#140f1f] dark:text-white">
+                <Compass
+                  size={14}
+                  className="text-violet-700 dark:text-violet-400 shrink-0"
+                />
+                <span>{playbook.company} Interview Pattern</span>
+              </div>
+              <span className="text-[11px] font-medium text-violet-700 dark:text-violet-300">
+                {playbook.archetype}
+              </span>
+            </div>
+            <p className="text-xs text-[#362f47] dark:text-[#d8d0ea] leading-relaxed">
+              {config.type === 'System Design'
+                ? playbook.systemDesignFocus
+                : config.type === 'Behavioural'
+                  ? playbook.behavioralFramework
+                  : playbook.codingStyle}
+            </p>
+            <div className="text-[11px] text-[#5a5170] dark:text-[#a69cbe] leading-relaxed border-t border-[#e4ddf5] dark:border-[#26193f] pt-2">
+              <span className="font-semibold text-[#140f1f] dark:text-white">
+                Signature Round:
+              </span>{' '}
+              {playbook.uniqueRound}
             </div>
           </div>
 

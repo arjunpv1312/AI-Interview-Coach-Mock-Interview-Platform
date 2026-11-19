@@ -236,6 +236,7 @@ export function ResultsView({
               role: session.role,
               type: session.type,
               difficulty: session.difficulty,
+              experience: session.experience ?? 3,
               resumeProfile: session.resumeProfile || null,
               history: session.history,
             }),
@@ -383,6 +384,16 @@ export function ResultsView({
               <span>{session.role}</span>
               <span aria-hidden="true">·</span>
               <span>{session.type}</span>
+              {session.experience !== undefined && (
+                <>
+                  <span aria-hidden="true">·</span>
+                  <span className="font-mono tabular-nums">
+                    {session.experience >= 25
+                      ? '25+ yrs'
+                      : `${session.experience} yrs`}
+                  </span>
+                </>
+              )}
               <span aria-hidden="true">·</span>
               <span>{session.difficulty}</span>
               {session.resumeProfile && (

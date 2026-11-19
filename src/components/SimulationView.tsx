@@ -11,6 +11,10 @@ import {
   Sliders,
 } from 'lucide-react';
 import { COMPANIES, ROLES } from '../data';
+import {
+  getCompanyPlaybook,
+  getLevelCalibration,
+} from '../lib/interviewPlaybooks';
 
 interface SimulationViewProps {
   user?: User | null;
@@ -26,12 +30,16 @@ export function SimulationView({
   const [config, setConfig] = useState({
     company: 'Google',
     role: 'Software Engineer',
-    experience: user?.resumeProfile?.yearsExperience || 3,
+    experience: Math.min(25, user?.resumeProfile?.yearsExperience ?? 3),
+    difficulty: 'Medium' as 'Easy' | 'Medium' | 'Hard',
     useResume: Boolean(user?.resumeProfile),
   });
   const [loading, setLoading] = useState(false);
   const [questions, setQuestions] = useState<string[]>([]);
   const [error, setError] = useState('');
+
+  const playbook = getCompanyPlaybook(config.company);
+  const calibration = getLevelCalibration(config.experience, config.difficulty);
 
   const isFormValid = Boolean(config.company && config.role);
 
@@ -47,6 +55,7 @@ export function SimulationView({
           company: config.company,
           role: config.role,
           experience: config.experience,
+          difficulty: config.difficulty,
           resumeProfile: config.useResume ? user?.resumeProfile || null : null,
         }),
       });
@@ -144,7 +153,7 @@ export function SimulationView({
           </div>
 
           <div className="space-y-2">
-            <div className="flex items-center justify-between text-xs font-semibold text-[#362f47] dark:text-[#d8d0ea]">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-semibold text-[#362f47] dark:text-[#d8d0ea]">
               <label
                 htmlFor="sim-experience"
                 className="flex items-center gap-2 cursor-pointer"
@@ -153,17 +162,17 @@ export function SimulationView({
                   size={14}
                   className="text-violet-700 dark:text-violet-400"
                 />
-                <span>Experience Level</span>
+                <span>Experience Calibration</span>
               </label>
-              <span className="font-mono tabular-nums text-[#140f1f] dark:text-white">
-                {config.experience} yrs
+              <span className="font-mono tabular-nums text-violet-700 dark:text-violet-300">
+                {calibration.yearsDisplay} · {calibration.tier}
               </span>
             </div>
             <input
               id="sim-experience"
               type="range"
               min="0"
-              max="15"
+              max="25"
               aria-label="Years of experience"
               value={config.experience}
               onChange={(e) =>
@@ -174,6 +183,48 @@ export function SimulationView({
               }
               className="w-full accent-violet-600 h-2 bg-[#ece5fb] dark:bg-[#1a112d] rounded-lg cursor-pointer"
             />
+            <div className="flex justify-between text-[11px] text-[#5a5170] dark:text-[#a69cbe]">
+              <span>0y Entry</span>
+              <span>7y Senior</span>
+              <span>12y Staff</span>
+              <span>25+y Principal</span>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <span className="block text-xs font-semibold text-[#362f47] dark:text-[#d8d0ea]">
+              Difficulty Calibration
+            </span>
+            <div className="grid grid-cols-3 gap-2">
+              {(['Easy', 'Medium', 'Hard'] as const).map((diff) => (
+                <button
+                  type="button"
+                  key={diff}
+                  aria-pressed={config.difficulty === diff}
+                  onClick={() => setConfig({ ...config, difficulty: diff })}
+                  className={`py-2 px-3 rounded-xl text-xs font-semibold border transition-colors cursor-pointer ${
+                    config.difficulty === diff
+                      ? diff === 'Easy'
+                        ? 'bg-emerald-500/15 border-emerald-500 text-emerald-700 dark:text-emerald-300'
+                        : diff === 'Medium'
+                          ? 'bg-violet-600/15 border-violet-500 text-violet-800 dark:text-violet-300'
+                          : 'bg-rose-500/15 border-rose-500 text-rose-700 dark:text-rose-300'
+                      : 'bg-white dark:bg-black border-[#e4ddf5] dark:border-[#26193f] text-[#5a5170] dark:text-[#a69cbe] hover:text-[#140f1f] dark:hover:text-white'
+                  }`}
+                >
+                  {diff}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="p-3.5 rounded-xl bg-white dark:bg-black border border-[#e4ddf5] dark:border-[#26193f] space-y-1">
+            <div className="text-[11px] font-semibold text-violet-700 dark:text-violet-300">
+              {playbook.company} · {playbook.archetype}
+            </div>
+            <p className="text-[11px] text-[#5a5170] dark:text-[#a69cbe] leading-relaxed">
+              {playbook.uniqueRound}
+            </p>
           </div>
 
           {user?.resumeProfile ? (
@@ -300,6 +351,7 @@ export function SimulationView({
                                 company: config.company,
                                 role: config.role,
                                 experience: config.experience,
+                                difficulty: config.difficulty,
                                 focusTopics: q,
                               })
                             : onNavigate('setup')
@@ -324,6 +376,7 @@ export function SimulationView({
                         company: config.company,
                         role: config.role,
                         experience: config.experience,
+                        difficulty: config.difficulty,
                       })
                     : onNavigate('setup')
                 }

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { mockQuestions, COMPANIES, ROLES } from '../data';
-import { User, InterviewConfig } from '../types';
+import { User, InterviewConfig, ExperienceTier } from '../types';
+import { getCompanyPlaybook } from '../lib/interviewPlaybooks';
 import {
   Search,
   BookmarkPlus,
@@ -29,6 +30,7 @@ export function QuestionBankView({
   const [filterCompany, setFilterCompany] = useState('');
   const [filterRole, setFilterRole] = useState('');
   const [filterDiff, setFilterDiff] = useState('');
+  const [filterLevel, setFilterLevel] = useState<'' | ExperienceTier>('');
   const [activeTab, setActiveTab] = useState<'all' | 'saved'>('all');
   const [expandedTipsId, setExpandedTipsId] = useState<string | null>(null);
 
@@ -41,6 +43,23 @@ export function QuestionBankView({
       ? bookmarkedIds.filter((item) => item !== id)
       : [...bookmarkedIds, id];
     onUpdateUser({ bookmarkedQuestionIds: updated });
+  };
+
+  const levelToExperience = (level?: ExperienceTier): number => {
+    switch (level) {
+      case 'Entry':
+        return 0;
+      case 'Mid-Level':
+        return 3;
+      case 'Senior':
+        return 7;
+      case 'Staff':
+        return 12;
+      case 'Principal':
+        return 20;
+      default:
+        return 3;
+    }
   };
 
   const filtered = mockQuestions.filter((q) => {
@@ -56,8 +75,13 @@ export function QuestionBankView({
     if (filterCompany && q.company !== filterCompany) return false;
     if (filterRole && q.role !== filterRole) return false;
     if (filterDiff && q.difficulty !== filterDiff) return false;
+    if (filterLevel && q.level !== filterLevel) return false;
     return true;
   });
+
+  const selectedPlaybook = filterCompany
+    ? getCompanyPlaybook(filterCompany)
+    : null;
 
   const getDiffColor = (diff: string) => {
     if (diff === 'Easy') return 'text-emerald-700 dark:text-emerald-400';
@@ -150,7 +174,7 @@ export function QuestionBankView({
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <select
             aria-label="Filter by company"
             className="bg-white dark:bg-black border border-[#e4ddf5] dark:border-[#26193f] text-[#140f1f] dark:text-violet-100 text-xs rounded-xl p-3 outline-none focus:border-violet-500 cursor-pointer"
@@ -178,6 +202,21 @@ export function QuestionBankView({
             ))}
           </select>
           <select
+            aria-label="Filter by career level"
+            className="bg-white dark:bg-black border border-[#e4ddf5] dark:border-[#26193f] text-[#140f1f] dark:text-violet-100 text-xs rounded-xl p-3 outline-none focus:border-violet-500 cursor-pointer"
+            value={filterLevel}
+            onChange={(e) =>
+              setFilterLevel(e.target.value as '' | ExperienceTier)
+            }
+          >
+            <option value="">All Career Levels</option>
+            <option value="Entry">Entry (0-1y)</option>
+            <option value="Mid-Level">Mid-Level (2-4y)</option>
+            <option value="Senior">Senior (5-9y)</option>
+            <option value="Staff">Staff (10-16y)</option>
+            <option value="Principal">Principal (17-25+y)</option>
+          </select>
+          <select
             aria-label="Filter by difficulty"
             className="bg-white dark:bg-black border border-[#e4ddf5] dark:border-[#26193f] text-[#140f1f] dark:text-violet-100 text-xs rounded-xl p-3 outline-none focus:border-violet-500 cursor-pointer"
             value={filterDiff}
@@ -189,6 +228,20 @@ export function QuestionBankView({
             <option value="Hard">Hard</option>
           </select>
         </div>
+
+        {selectedPlaybook && (
+          <div className="p-3.5 rounded-xl bg-white dark:bg-black border border-[#e4ddf5] dark:border-[#26193f] space-y-1">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+              <span className="font-bold text-violet-700 dark:text-violet-300">
+                {selectedPlaybook.company} Real-World Pattern ·{' '}
+                {selectedPlaybook.archetype}
+              </span>
+            </div>
+            <p className="text-xs text-[#5a5170] dark:text-[#a69cbe] leading-relaxed">
+              {selectedPlaybook.cultureSummary}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Grid */}
@@ -210,6 +263,12 @@ export function QuestionBankView({
                     </span>
                     <span aria-hidden="true">·</span>
                     <span>{q.role}</span>
+                    {q.level && (
+                      <>
+                        <span aria-hidden="true">·</span>
+                        <span>{q.level}</span>
+                      </>
+                    )}
                     <span aria-hidden="true">·</span>
                     <span>{q.category}</span>
                   </div>
@@ -221,6 +280,12 @@ export function QuestionBankView({
                     {q.difficulty}
                   </span>
                 </div>
+
+                {q.cultureFocus && (
+                  <div className="text-[11px] font-medium text-[#5a5170] dark:text-[#a69cbe]">
+                    Culture Focus: {q.cultureFocus}
+                  </div>
+                )}
 
                 <h3 className="text-base font-bold text-[#140f1f] dark:text-white leading-snug">
                   {q.text}
@@ -290,6 +355,7 @@ export function QuestionBankView({
                           role: q.role,
                           type: q.category,
                           difficulty: q.difficulty,
+                          experience: levelToExperience(q.level),
                           focusTopics: q.text,
                         });
                       } else {

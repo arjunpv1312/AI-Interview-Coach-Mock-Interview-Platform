@@ -2,6 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import Webcam from 'react-webcam';
 import { ChatMessage, InterviewConfig } from '../types';
 import {
+  getCompanyPlaybook,
+  getLevelCalibration,
+} from '../lib/interviewPlaybooks';
+import { consumePrewarmedOpeningTurn } from '../lib/interviewPrewarm';
+import {
   Clock,
   Video,
   VideoOff,
@@ -38,18 +43,14 @@ export function LiveInterviewView({
   onComplete,
   onCancel,
 }: LiveInterviewViewProps) {
+  const playbook = getCompanyPlaybook(config.company);
+  const calibration = getLevelCalibration(config.experience, config.difficulty);
+  const silencePatienceMs = calibration.silencePatienceMs;
+
   const [history, setHistory] = useState<ChatMessage[]>([]);
-  const [timeLeft, setTimeLeft] = useState(() => {
-    switch (config.difficulty) {
-      case 'Easy':
-        return 15 * 60;
-      case 'Hard':
-        return 45 * 60;
-      case 'Medium':
-      default:
-        return 30 * 60;
-    }
-  });
+  const [timeLeft, setTimeLeft] = useState(
+    () => calibration.recommendedMinutes * 60
+  );
   const [answerText, setAnswerText] = useState('');
   const [isThinking, setIsThinking] = useState(true);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
@@ -437,7 +438,7 @@ export function LiveInterviewView({
     let lastErr: any = null;
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 25000);
+      const timer = setTimeout(() => controller.abort(), 14000);
       try {
         const res = await fetch('/api/interact', {
           method: 'POST',
@@ -459,41 +460,55 @@ export function LiveInterviewView({
         clearTimeout(timer);
         lastErr = err;
         if (attempt < maxAttempts - 1) {
-          await new Promise((r) => setTimeout(r, 700));
+          await new Promise((r) => setTimeout(r, 400));
         }
       }
     }
     throw lastErr || new Error('Connection timed out');
   };
 
-  // Initial greeting and resume-grounded opening question
+  // Initial greeting and resume-grounded opening question (instant when pre-warmed)
   const hasFetchedInitialRef = useRef(false);
   useEffect(() => {
     let mounted = true;
+    const applyOpeningData = (data: { text?: string; error?: boolean }) => {
+      if (!mounted) return;
+      if (
+        data.error ||
+        data.text?.includes('having a technical issue') ||
+        data.text?.includes('high load') ||
+        data.text?.includes('API key is missing')
+      ) {
+        setErrorToast(data.text || 'API connection failed. Retrying...');
+        setTimeout(() => setErrorToast(''), 5000);
+      } else {
+        const aiMessage = {
+          role: 'interviewer' as const,
+          text:
+            data.text ||
+            'Let us begin. Could you walk me through your background?',
+        };
+        setHistory((prev) => [...prev, aiMessage]);
+      }
+      setIsThinking(false);
+      if (data.text) speakText(data.text);
+    };
+
     const fetchNextResponse = async (currentHistory: ChatMessage[]) => {
       try {
-        const data = await postInteractWithRetry(currentHistory);
-        if (!mounted) return;
-
-        if (
-          data.error ||
-          data.text?.includes('having a technical issue') ||
-          data.text?.includes('high load') ||
-          data.text?.includes('API key is missing')
-        ) {
-          setErrorToast(data.text || 'API connection failed. Retrying...');
-          setTimeout(() => setErrorToast(''), 5000);
-        } else {
-          const aiMessage = {
-            role: 'interviewer' as const,
-            text:
-              data.text ||
-              'Let us begin. Could you walk me through your background?',
-          };
-          setHistory((prev) => [...prev, aiMessage]);
+        if (currentHistory.length === 0) {
+          const prewarmPromise = consumePrewarmedOpeningTurn(config);
+          if (prewarmPromise) {
+            const prewarmed = await prewarmPromise;
+            if (!mounted) return;
+            if (prewarmed && prewarmed.text && !prewarmed.error) {
+              applyOpeningData(prewarmed);
+              return;
+            }
+          }
         }
-        setIsThinking(false);
-        if (data.text) speakText(data.text);
+        const data = await postInteractWithRetry(currentHistory);
+        applyOpeningData(data);
       } catch (err: any) {
         if (!mounted) return;
         console.warn('Initial prompt fetch retry exhausted:', err?.message || err);
@@ -573,7 +588,7 @@ export function LiveInterviewView({
     answerTextRef.current = answerText;
   }, [answerText]);
 
-  // Silence detection for auto-submit
+  // Silence detection for auto-submit (scaled gently for Easy vs Hard loops)
   useEffect(() => {
     if (
       autoSubmitEnabled &&
@@ -591,12 +606,19 @@ export function LiveInterviewView({
         ) {
           handleSubmit();
         }
-      }, 5000);
+      }, silencePatienceMs);
     }
     return () => {
       if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
     };
-  }, [answerText, isMicOn, isThinking, isSpeaking, autoSubmitEnabled]);
+  }, [
+    answerText,
+    isMicOn,
+    isThinking,
+    isSpeaking,
+    autoSubmitEnabled,
+    silencePatienceMs,
+  ]);
 
   useEffect(() => {
     const SpeechRecognition =
@@ -797,7 +819,15 @@ export function LiveInterviewView({
             <div className="flex flex-wrap items-center gap-2 text-xs text-[#5a5170] dark:text-[#a69cbe] mt-0.5">
               <span>{config.type}</span>
               <span aria-hidden="true">·</span>
+              <span>
+                {calibration.tier} ({calibration.yearsDisplay})
+              </span>
+              <span aria-hidden="true">·</span>
               <span>{config.difficulty}</span>
+              <span aria-hidden="true">·</span>
+              <span className="text-violet-700 dark:text-violet-300 font-medium">
+                {playbook.archetype.split('·')[0].trim()}
+              </span>
               {resume && (
                 <>
                   <span aria-hidden="true">·</span>
@@ -883,7 +913,11 @@ export function LiveInterviewView({
             active={autoSubmitEnabled}
             onClick={() => setAutoSubmitEnabled((v) => !v)}
             icon={<RefreshCcw size={14} />}
-            label={autoSubmitEnabled ? 'Auto-Send: 5s' : 'Auto-Send: Off'}
+            label={
+              autoSubmitEnabled
+                ? `Auto-Send: ${Math.round(silencePatienceMs / 1000)}s`
+                : 'Auto-Send: Off'
+            }
           />
 
           <ToggleButton
@@ -1058,14 +1092,18 @@ export function LiveInterviewView({
 
             <h3 className="text-xl font-bold text-[#140f1f] dark:text-white">
               {isThinking
-                ? 'Formulating Follow-Up'
+                ? history.length === 0
+                  ? `Opening ${config.company} Loop`
+                  : 'Formulating Follow-Up'
                 : isSpeaking
                   ? 'Interviewer Speaking'
                   : 'Your Turn to Respond'}
             </h3>
             <p className="text-xs text-[#5a5170] dark:text-[#a69cbe] mt-1 max-w-xs">
               {isThinking
-                ? 'Reviewing your response and resume alignment...'
+                ? history.length === 0
+                  ? `Preparing ${calibration.tier} (${config.difficulty}) opening question...`
+                  : 'Reviewing your response and calibrated bar...'
                 : isSpeaking
                   ? 'Listen to the prompt or read along below.'
                   : isMicOn

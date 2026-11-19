@@ -22,6 +22,7 @@ import {
   touchVaultSessionActivity,
   updateVaultUser,
 } from './lib/CryptoVault';
+import { prewarmOpeningTurn } from './lib/interviewPrewarm';
 import { DashboardView } from './components/DashboardView';
 import { SetupView } from './components/SetupView';
 import { LiveInterviewView } from './components/LiveInterviewView';
@@ -321,6 +322,7 @@ export default function App() {
       window.speechSynthesis.speak(unlockUtterance);
     }
 
+    void prewarmOpeningTurn(config);
     setSessionParams(config);
     setView('live');
   };
@@ -334,6 +336,7 @@ export default function App() {
       role: sessionParams.role,
       type: sessionParams.type,
       difficulty: sessionParams.difficulty,
+      experience: sessionParams.experience,
       startTime: new Date().toISOString(),
       history,
       resumeProfile: sessionParams.resumeProfile || null,
