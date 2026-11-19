@@ -64,7 +64,21 @@ export interface ScheduledSession {
   type: string;
 }
 
-export type ThemeVariant = 'amoled' | 'cobalt' | 'cyan' | 'obsidian' | 'default' | 'midnight' | 'forest' | 'sunset';
+export type ThemeVariant =
+  | 'obsidian-violet'
+  | 'amethyst'
+  | 'orchid'
+  | 'carbon-plum'
+  | 'amoled'
+  | 'cobalt'
+  | 'cyan'
+  | 'obsidian'
+  | 'default'
+  | 'midnight'
+  | 'forest'
+  | 'sunset';
+
+export type ColorMode = 'dark' | 'light';
 
 export interface User {
   id: string;
@@ -81,6 +95,7 @@ export interface User {
   loginStreak?: number;
   dailyGoal?: number;
   themePreference?: ThemeVariant;
+  colorMode?: ColorMode;
   resumeProfile?: ResumeProfile | null;
   authProvider?: 'email' | 'google' | 'github' | 'guest';
   bookmarkedQuestionIds?: string[];

@@ -4,7 +4,7 @@ import {
   ArrowLeft,
   Download,
   Award,
-  Linkedin,
+  Share2,
   Lock,
   CheckCircle2,
   ChevronRight,
@@ -93,9 +93,10 @@ export function CertificateView({ user, onNavigate }: CertificateViewProps) {
     if (!certificateRef.current || !selectedCert) return;
     try {
       setDownloading(true);
+      const isDark = document.documentElement.classList.contains('dark');
       const dataUrl = await toPng(certificateRef.current, {
         pixelRatio: 2,
-        backgroundColor: '#000000',
+        backgroundColor: isDark ? '#000000' : '#ffffff',
       });
       const link = document.createElement('a');
       link.download = `Certificate_${selectedCert.title.replace(/\s+/g, '_')}_${user.fullName.replace(/\s+/g, '_')}.png`;
@@ -127,27 +128,31 @@ export function CertificateView({ user, onNavigate }: CertificateViewProps) {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 pb-12">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#16223b] pb-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#e4ddf5] dark:border-[#26193f] pb-6">
         <div className="flex items-center gap-4">
           <button
             type="button"
+            aria-label={selectedCert ? 'Back to Certificates' : 'Back to Dashboard'}
             onClick={() =>
               selectedCert ? setSelectedCert(null) : onNavigate('dashboard')
             }
-            className="p-2.5 bg-black border border-[#16223b] hover:border-blue-500/40 rounded-xl text-slate-400 hover:text-white transition-colors cursor-pointer"
+            className="p-2.5 bg-white dark:bg-black border border-[#e4ddf5] dark:border-[#26193f] hover:border-violet-500/50 rounded-xl text-[#5a5170] dark:text-[#a69cbe] hover:text-[#140f1f] dark:hover:text-white transition-colors cursor-pointer"
           >
             <ArrowLeft size={18} />
           </button>
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white flex items-center gap-2.5">
-              <Award className="text-blue-400" size={24} />
+            <h1 className="text-2xl sm:text-3xl font-bold text-[#140f1f] dark:text-white flex items-center gap-2.5">
+              <Award
+                className="text-violet-700 dark:text-violet-400"
+                size={24}
+              />
               <span>
                 {selectedCert
                   ? 'Certificate Preview'
                   : 'Achievement Certificates'}
               </span>
             </h1>
-            <p className="text-slate-400 text-sm mt-1">
+            <p className="text-[#5a5170] dark:text-[#a69cbe] text-sm mt-1">
               Download verified milestone credentials from your encrypted
               practice history.
             </p>
@@ -159,10 +164,13 @@ export function CertificateView({ user, onNavigate }: CertificateViewProps) {
             <button
               type="button"
               onClick={handleCopyShareLink}
-              className="flex items-center gap-2 bg-black hover:bg-[#0a1120] border border-[#16223b] text-slate-200 px-4 py-2.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+              className="flex items-center gap-2 bg-white dark:bg-black hover:bg-[#f6f3fd] dark:hover:bg-[#120b24] border border-[#e4ddf5] dark:border-[#26193f] text-[#140f1f] dark:text-[#d8d0ea] px-4 py-2.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
             >
               {copiedUrl ? (
-                <Check size={15} className="text-emerald-400" />
+                <Check
+                  size={15}
+                  className="text-emerald-700 dark:text-emerald-400"
+                />
               ) : (
                 <Copy size={15} />
               )}
@@ -185,10 +193,10 @@ export function CertificateView({ user, onNavigate }: CertificateViewProps) {
               href={linkedInHref}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 bg-[#0a66c2] hover:bg-[#004182] text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all"
+              className="flex items-center gap-2 bg-[#140f1f] hover:bg-violet-950 dark:bg-violet-950/70 dark:hover:bg-violet-900/80 border border-violet-500/40 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all"
             >
-              <Linkedin size={15} />
-              <span>Share on LinkedIn</span>
+              <Share2 size={15} />
+              <span>Share Credential</span>
             </a>
           </div>
         )}
@@ -197,8 +205,11 @@ export function CertificateView({ user, onNavigate }: CertificateViewProps) {
       {!selectedCert ? (
         <div className="space-y-6">
           <div className="amoled-surface rounded-2xl p-5 flex items-start gap-4">
-            <Info className="text-blue-400 shrink-0 mt-0.5" size={20} />
-            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+            <Info
+              className="text-violet-700 dark:text-violet-400 shrink-0 mt-0.5"
+              size={20}
+            />
+            <p className="text-xs sm:text-sm text-[#362f47] dark:text-[#d8d0ea] leading-relaxed">
               Complete mock interviews, score 90+, and sustain your practice
               streak to unlock exportable achievement certificates stored locally
               in your encrypted profile.
@@ -210,7 +221,7 @@ export function CertificateView({ user, onNavigate }: CertificateViewProps) {
               <div
                 key={cert.id}
                 className={`amoled-surface rounded-2xl overflow-hidden flex flex-col justify-between transition-colors ${
-                  cert.isUnlocked ? 'border-blue-500/40' : ''
+                  cert.isUnlocked ? 'border-violet-500/45' : ''
                 }`}
               >
                 <div className="p-6 space-y-4">
@@ -218,8 +229,8 @@ export function CertificateView({ user, onNavigate }: CertificateViewProps) {
                     <div
                       className={`w-12 h-12 rounded-xl border flex items-center justify-center ${
                         cert.isUnlocked
-                          ? 'bg-blue-600/15 border-blue-500/30 text-blue-400'
-                          : 'bg-black border-[#16223b] text-slate-500'
+                          ? 'bg-violet-600/15 border-violet-500/35 text-violet-700 dark:text-violet-400'
+                          : 'bg-white dark:bg-black border-[#e4ddf5] dark:border-[#26193f] text-[#766b91]'
                       }`}
                     >
                       {cert.isUnlocked ? (
@@ -230,7 +241,9 @@ export function CertificateView({ user, onNavigate }: CertificateViewProps) {
                     </div>
                     <span
                       className={`text-xs font-mono tabular-nums ${
-                        cert.isUnlocked ? 'text-cyan-400 font-semibold' : 'text-slate-500'
+                        cert.isUnlocked
+                          ? 'text-violet-700 dark:text-purple-400 font-semibold'
+                          : 'text-[#766b91]'
                       }`}
                     >
                       {cert.isUnlocked ? 'Unlocked' : cert.progress}
@@ -238,28 +251,28 @@ export function CertificateView({ user, onNavigate }: CertificateViewProps) {
                   </div>
 
                   <div>
-                    <h3 className="text-xl font-bold text-white">
+                    <h3 className="text-xl font-bold text-[#140f1f] dark:text-white">
                       {cert.title}
                     </h3>
-                    <p className="text-xs text-blue-300 font-medium mt-0.5">
+                    <p className="text-xs text-violet-700 dark:text-violet-300 font-medium mt-0.5">
                       {cert.subtitle}
                     </p>
-                    <p className="text-xs text-slate-400 leading-relaxed mt-3">
+                    <p className="text-xs text-[#5a5170] dark:text-[#a69cbe] leading-relaxed mt-3">
                       {cert.description}
                     </p>
                   </div>
 
                   <div className="space-y-1.5 pt-2">
-                    <div className="flex justify-between text-xs text-slate-400 font-mono tabular-nums">
+                    <div className="flex justify-between text-xs text-[#5a5170] dark:text-[#a69cbe] font-mono tabular-nums">
                       <span>Progress</span>
                       <span>{cert.progress}</span>
                     </div>
-                    <div className="h-2 w-full bg-black border border-[#16223b] rounded-full overflow-hidden">
+                    <div className="h-2 w-full bg-white dark:bg-black border border-[#e4ddf5] dark:border-[#26193f] rounded-full overflow-hidden">
                       <div
                         className={`h-full rounded-full transition-all duration-700 ${
                           cert.isUnlocked
-                            ? 'bg-gradient-to-r from-blue-600 to-cyan-400'
-                            : 'bg-blue-500/40'
+                            ? 'bg-gradient-to-r from-violet-600 to-purple-500'
+                            : 'bg-violet-500/40'
                         }`}
                         style={{ width: `${cert.progressPercent}%` }}
                       />
@@ -271,13 +284,13 @@ export function CertificateView({ user, onNavigate }: CertificateViewProps) {
                   <button
                     type="button"
                     onClick={() => setSelectedCert(cert)}
-                    className="w-full py-3.5 px-6 flex items-center justify-between text-xs font-bold bg-blue-600/15 hover:bg-blue-600/25 text-blue-300 border-t border-[#16223b] transition-colors cursor-pointer"
+                    className="w-full py-3.5 px-6 flex items-center justify-between text-xs font-bold bg-violet-600/10 hover:bg-violet-600/20 text-violet-700 dark:text-violet-300 border-t border-[#e4ddf5] dark:border-[#26193f] transition-colors cursor-pointer"
                   >
-                    <span>Preview & Export Certificate</span>
+                    <span>Preview &amp; Export Certificate</span>
                     <ChevronRight size={16} />
                   </button>
                 ) : (
-                  <div className="w-full py-3.5 px-6 flex items-center justify-center text-xs font-medium text-slate-500 bg-black/60 border-t border-[#16223b]">
+                  <div className="w-full py-3.5 px-6 flex items-center justify-center text-xs font-medium text-[#766b91] bg-[#f8f5ff] dark:bg-black/60 border-t border-[#e4ddf5] dark:border-[#26193f]">
                     <Lock size={14} className="mr-2" />
                     <span>Complete target milestone to unlock</span>
                   </div>
@@ -290,51 +303,53 @@ export function CertificateView({ user, onNavigate }: CertificateViewProps) {
         <div className="max-w-4xl mx-auto">
           <div
             ref={certificateRef}
-            className="bg-black p-3 md:p-5 rounded-3xl overflow-hidden shadow-2xl relative border-2 border-blue-500/40"
+            className="bg-white dark:bg-black p-3 md:p-5 rounded-3xl overflow-hidden shadow-2xl relative border-2 border-violet-500/45"
           >
-            <div className="border border-blue-500/25 rounded-2xl p-8 md:p-14 relative overflow-hidden bg-gradient-to-b from-[#060c18] to-black">
+            <div className="border border-violet-500/25 rounded-2xl p-8 md:p-14 relative overflow-hidden bg-gradient-to-b from-[#f8f5ff] to-white dark:from-[#0c0518] dark:to-black">
               <div className="text-center relative z-10 space-y-7">
                 <div className="flex justify-center">
-                  <div className="w-20 h-20 bg-blue-600/15 rounded-2xl flex items-center justify-center border border-blue-500/40 text-blue-400">
+                  <div className="w-20 h-20 bg-violet-600/15 rounded-2xl flex items-center justify-center border border-violet-500/40 text-violet-700 dark:text-violet-400">
                     <Award size={40} />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-300 via-cyan-300 to-blue-400">
+                  <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-violet-700 via-purple-600 to-violet-800 dark:from-violet-300 dark:via-purple-300 dark:to-violet-400">
                     Certificate of Achievement
                   </h2>
-                  <p className="text-cyan-400/80 text-xs md:text-sm font-semibold">
-                    Technical Interview Readiness & Engineering Excellence
+                  <p className="text-violet-700 dark:text-purple-400/90 text-xs md:text-sm font-semibold">
+                    Technical Interview Readiness &amp; Engineering Excellence
                   </p>
                 </div>
 
                 <div className="py-4 space-y-3">
-                  <p className="text-slate-400 text-sm">
+                  <p className="text-[#5a5170] dark:text-[#a69cbe] text-sm">
                     This credential recognizes that
                   </p>
-                  <div className="border-b border-blue-500/30 pb-2 inline-block px-10">
-                    <h3 className="text-2xl md:text-3xl font-bold text-white capitalize">
+                  <div className="border-b border-violet-500/35 pb-2 inline-block px-10">
+                    <h3 className="text-2xl md:text-3xl font-bold text-[#140f1f] dark:text-white capitalize">
                       {user.fullName}
                     </h3>
                   </div>
                 </div>
 
                 <div className="max-w-xl mx-auto">
-                  <p className="text-slate-300 text-sm md:text-base leading-relaxed">
+                  <p className="text-[#362f47] dark:text-[#d8d0ea] text-sm md:text-base leading-relaxed">
                     Has successfully earned the{' '}
-                    <strong className="text-white">{selectedCert.title}</strong>{' '}
+                    <strong className="text-[#140f1f] dark:text-white">
+                      {selectedCert.title}
+                    </strong>{' '}
                     distinction through structured mock interviews, demonstrating
                     clear technical communication and problem-solving rigor.
                   </p>
                 </div>
 
-                <div className="flex justify-between items-end pt-10 px-4 md:px-10 border-t border-[#16223b] mt-8">
+                <div className="flex justify-between items-end pt-10 px-4 md:px-10 border-t border-[#e4ddf5] dark:border-[#26193f] mt-8">
                   <div className="text-left space-y-1">
-                    <p className="text-slate-500 text-xs font-medium">
+                    <p className="text-[#5a5170] dark:text-[#a69cbe] text-xs font-medium">
                       Issue Date
                     </p>
-                    <p className="text-slate-200 text-sm font-bold font-mono tabular-nums">
+                    <p className="text-[#140f1f] dark:text-[#d8d0ea] text-sm font-bold font-mono tabular-nums">
                       {new Date().toLocaleDateString('en-US', {
                         year: 'numeric',
                         month: 'long',
@@ -343,10 +358,10 @@ export function CertificateView({ user, onNavigate }: CertificateViewProps) {
                     </p>
                   </div>
                   <div className="text-right space-y-1">
-                    <p className="text-slate-500 text-xs font-medium">
+                    <p className="text-[#5a5170] dark:text-[#a69cbe] text-xs font-medium">
                       Issued By
                     </p>
-                    <div className="text-lg text-blue-300 font-bold border-b border-[#16223b] pb-1">
+                    <div className="text-lg text-violet-700 dark:text-violet-300 font-bold border-b border-[#e4ddf5] dark:border-[#26193f] pb-1">
                       Interview Copilot Pro
                     </div>
                   </div>

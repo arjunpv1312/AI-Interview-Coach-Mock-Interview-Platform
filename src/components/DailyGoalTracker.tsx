@@ -36,15 +36,19 @@ export function DailyGoalTracker({
           <div
             className={`p-2.5 rounded-xl border ${
               isGoalReached
-                ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
-                : 'bg-blue-600/15 border-blue-500/30 text-blue-400'
+                ? 'bg-emerald-500/15 border-emerald-500/35 text-emerald-600 dark:text-emerald-400'
+                : 'bg-violet-100 dark:bg-violet-600/20 border-violet-300 dark:border-violet-500/35 text-violet-700 dark:text-violet-400'
             }`}
           >
             {isGoalReached ? <CheckCircle2 size={18} /> : <Target size={18} />}
           </div>
           <div>
-            <h3 className="text-sm font-bold text-white">Daily Practice Goal</h3>
-            <p className="text-xs text-slate-400">Mock interviews completed today</p>
+            <h3 className="text-sm font-bold text-[#140f1f] dark:text-white">
+              Daily Practice Goal
+            </h3>
+            <p className="text-xs text-[#5a5170] dark:text-[#a69cbe]">
+              Mock interviews completed today
+            </p>
           </div>
         </div>
 
@@ -54,9 +58,10 @@ export function DailyGoalTracker({
               type="number"
               min="1"
               max="20"
+              aria-label="Daily practice session goal"
               value={goalInput}
               onChange={(e) => setGoalInput(parseInt(e.target.value, 10) || 1)}
-              className="w-16 bg-black border border-[#16223b] rounded-lg text-white text-center text-xs font-mono tabular-nums py-1.5 outline-none focus:border-blue-500"
+              className="w-16 bg-white dark:bg-black border border-[#e4ddf5] dark:border-[#26193f] rounded-lg text-[#140f1f] dark:text-white text-center text-xs font-mono tabular-nums py-1.5 outline-none focus:border-violet-500"
             />
             <button
               type="button"
@@ -73,7 +78,7 @@ export function DailyGoalTracker({
               setGoalInput(goal);
               setIsEditing(true);
             }}
-            className="text-xs font-medium text-blue-400 hover:text-cyan-300 transition-colors cursor-pointer whitespace-nowrap"
+            className="text-xs font-medium text-violet-700 dark:text-violet-400 hover:text-purple-600 dark:hover:text-purple-300 transition-colors cursor-pointer whitespace-nowrap"
           >
             Edit Goal
           </button>
@@ -85,16 +90,22 @@ export function DailyGoalTracker({
           <div className="flex items-baseline gap-1.5 font-mono tabular-nums">
             <span
               className={`text-2xl font-bold ${
-                isGoalReached ? 'text-emerald-400' : 'text-white'
+                isGoalReached
+                  ? 'text-emerald-600 dark:text-emerald-400'
+                  : 'text-[#140f1f] dark:text-white'
               }`}
             >
               {completedToday}
             </span>
-            <span className="text-xs text-slate-400">/ {goal} sessions</span>
+            <span className="text-xs text-[#5a5170] dark:text-[#a69cbe]">
+              / {goal} sessions
+            </span>
           </div>
           <span
             className={`text-xs font-medium ${
-              isGoalReached ? 'text-emerald-400' : 'text-slate-400'
+              isGoalReached
+                ? 'text-emerald-600 dark:text-emerald-400'
+                : 'text-[#5a5170] dark:text-[#a69cbe]'
             }`}
           >
             {isGoalReached
@@ -103,12 +114,12 @@ export function DailyGoalTracker({
           </span>
         </div>
 
-        <div className="w-full h-2.5 bg-black border border-[#16223b] rounded-full overflow-hidden">
+        <div className="w-full h-2.5 bg-[#f3effb] dark:bg-black border border-[#e4ddf5] dark:border-[#26193f] rounded-full overflow-hidden">
           <div
             className={`h-full rounded-full transition-all duration-700 ${
               isGoalReached
                 ? 'bg-emerald-500'
-                : 'bg-gradient-to-r from-blue-600 to-cyan-400'
+                : 'bg-gradient-to-r from-violet-600 to-purple-400'
             }`}
             style={{ width: `${progress}%` }}
           />

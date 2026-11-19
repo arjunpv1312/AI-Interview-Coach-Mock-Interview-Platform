@@ -118,24 +118,26 @@ export function CalendarWidget({
         <button
           type="button"
           key={day}
+          aria-label={`Select ${dateObj.toDateString()}`}
+          aria-pressed={isSelected}
           onClick={() => {
             setSelectedDate(dateObj);
             setShowScheduleForm(false);
           }}
           className={`h-9 w-9 flex items-center justify-center rounded-xl text-xs font-mono tabular-nums transition-all relative mx-auto cursor-pointer ${
             isSelected
-              ? 'bg-blue-600 text-white font-bold'
-              : 'hover:bg-[#0a1120] text-slate-300'
-          } ${isToday && !isSelected ? 'border border-blue-500/60' : ''}`}
+              ? 'bg-violet-600 text-white font-bold'
+              : 'hover:bg-[#f3effb] dark:hover:bg-[#120b1f] text-[#362f47] dark:text-[#d8d0ea]'
+          } ${isToday && !isSelected ? 'border border-violet-500/60' : ''}`}
         >
           <span>{day}</span>
           {(hasPast || hasUpcoming) && (
             <span className="absolute bottom-1 flex gap-1">
               {hasPast && (
-                <span className="w-1 h-1 rounded-full bg-emerald-400" />
+                <span className="w-1 h-1 rounded-full bg-emerald-500" />
               )}
               {hasUpcoming && (
-                <span className="w-1 h-1 rounded-full bg-cyan-400" />
+                <span className="w-1 h-1 rounded-full bg-violet-400" />
               )}
             </span>
           )}
@@ -166,29 +168,31 @@ export function CalendarWidget({
   return (
     <div className="amoled-surface rounded-2xl overflow-hidden flex flex-col md:flex-row min-h-[400px]">
       {/* Left Calendar Grid */}
-      <div className="w-full md:w-[340px] border-b md:border-b-0 md:border-r border-[#16223b] p-6 flex flex-col bg-black/40">
+      <div className="w-full md:w-[340px] border-b md:border-b-0 md:border-r border-[#e4ddf5] dark:border-[#26193f] p-6 flex flex-col bg-[#faf8ff] dark:bg-black/50">
         <div className="flex w-full items-center justify-between mb-5">
           <button
             type="button"
             onClick={prevMonth}
-            className="p-1.5 hover:bg-[#0a1120] rounded-lg text-slate-400 hover:text-white transition-colors cursor-pointer"
+            aria-label="Previous month"
+            className="p-1.5 hover:bg-[#f3effb] dark:hover:bg-[#120b1f] rounded-lg text-[#5a5170] dark:text-[#a69cbe] hover:text-[#140f1f] dark:hover:text-white transition-colors cursor-pointer"
           >
             <ChevronLeft size={18} />
           </button>
-          <div className="text-sm font-bold text-white">
+          <div className="text-sm font-bold text-[#140f1f] dark:text-white">
             {currentDate.toLocaleString('default', { month: 'long' })}{' '}
             {currentDate.getFullYear()}
           </div>
           <button
             type="button"
             onClick={nextMonth}
-            className="p-1.5 hover:bg-[#0a1120] rounded-lg text-slate-400 hover:text-white transition-colors cursor-pointer"
+            aria-label="Next month"
+            className="p-1.5 hover:bg-[#f3effb] dark:hover:bg-[#120b1f] rounded-lg text-[#5a5170] dark:text-[#a69cbe] hover:text-[#140f1f] dark:hover:text-white transition-colors cursor-pointer"
           >
             <ChevronRight size={18} />
           </button>
         </div>
 
-        <div className="grid grid-cols-7 gap-1 w-full text-center text-[11px] font-semibold text-slate-500 mb-2">
+        <div className="grid grid-cols-7 gap-1 w-full text-center text-[11px] font-semibold text-[#5a5170] dark:text-[#a69cbe] mb-2">
           <div>Mo</div>
           <div>Tu</div>
           <div>We</div>
@@ -200,17 +204,20 @@ export function CalendarWidget({
 
         <div className="w-full flex-1 space-y-1">{renderCalendar()}</div>
 
-        <div className="flex items-center justify-between pt-4 mt-4 border-t border-[#16223b] text-xs text-slate-400">
-          <span>Green mark: Completed</span>
-          <span>Cyan mark: Scheduled</span>
+        <div className="flex items-center justify-between pt-4 mt-4 border-t border-[#e4ddf5] dark:border-[#26193f] text-xs text-[#5a5170] dark:text-[#a69cbe]">
+          <span>Emerald mark: Completed</span>
+          <span>Violet mark: Scheduled</span>
         </div>
       </div>
 
       {/* Right Event & Scheduler Panel */}
       <div className="flex-1 p-6 overflow-y-auto flex flex-col">
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-5 pb-4 border-b border-[#16223b]">
-          <div className="flex items-center gap-2.5 text-white">
-            <CalendarIcon size={18} className="text-blue-400" />
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-5 pb-4 border-b border-[#e4ddf5] dark:border-[#26193f]">
+          <div className="flex items-center gap-2.5 text-[#140f1f] dark:text-white">
+            <CalendarIcon
+              size={18}
+              className="text-violet-700 dark:text-violet-400"
+            />
             <h3 className="text-base font-bold">
               {selectedDate.toLocaleDateString(undefined, {
                 weekday: 'long',
@@ -222,7 +229,7 @@ export function CalendarWidget({
           <button
             type="button"
             onClick={() => setShowScheduleForm(!showScheduleForm)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-black hover:bg-[#0a1120] border border-blue-500/40 text-xs font-semibold text-blue-300 transition-colors cursor-pointer whitespace-nowrap"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-black hover:bg-[#f3effb] dark:hover:bg-[#120b1f] border border-violet-400/50 text-xs font-semibold text-violet-700 dark:text-violet-300 transition-colors cursor-pointer whitespace-nowrap"
           >
             {showScheduleForm ? <X size={14} /> : <Plus size={14} />}
             <span>{showScheduleForm ? 'Cancel' : 'Schedule Session'}</span>
@@ -232,16 +239,17 @@ export function CalendarWidget({
         {showScheduleForm && (
           <form
             onSubmit={handleAddSchedule}
-            className="mb-5 p-4 rounded-xl bg-black border border-[#16223b] space-y-3"
+            className="mb-5 p-4 rounded-xl bg-white dark:bg-black border border-[#e4ddf5] dark:border-[#26193f] space-y-3"
           >
-            <div className="text-xs font-bold text-white">
+            <div className="text-xs font-bold text-[#140f1f] dark:text-white">
               Add Practice Session to Encrypted Vault ({selectedDateStr})
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <select
+                aria-label="Scheduled company"
                 value={newCompany}
                 onChange={(e) => setNewCompany(e.target.value)}
-                className="bg-[#050912] border border-[#16223b] rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-blue-500"
+                className="bg-[#faf8ff] dark:bg-[#08050f] border border-[#e4ddf5] dark:border-[#26193f] rounded-lg px-3 py-2 text-xs text-[#140f1f] dark:text-white outline-none focus:border-violet-500"
               >
                 {COMPANIES.map((c) => (
                   <option key={c} value={c}>
@@ -250,9 +258,10 @@ export function CalendarWidget({
                 ))}
               </select>
               <select
+                aria-label="Scheduled role"
                 value={newRole}
                 onChange={(e) => setNewRole(e.target.value)}
-                className="bg-[#050912] border border-[#16223b] rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-blue-500"
+                className="bg-[#faf8ff] dark:bg-[#08050f] border border-[#e4ddf5] dark:border-[#26193f] rounded-lg px-3 py-2 text-xs text-[#140f1f] dark:text-white outline-none focus:border-violet-500"
               >
                 {ROLES.map((r) => (
                   <option key={r} value={r}>
@@ -261,19 +270,21 @@ export function CalendarWidget({
                 ))}
               </select>
               <select
+                aria-label="Scheduled round type"
                 value={newType}
                 onChange={(e) => setNewType(e.target.value)}
-                className="bg-[#050912] border border-[#16223b] rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-blue-500"
+                className="bg-[#faf8ff] dark:bg-[#08050f] border border-[#e4ddf5] dark:border-[#26193f] rounded-lg px-3 py-2 text-xs text-[#140f1f] dark:text-white outline-none focus:border-violet-500"
               >
                 <option value="Technical">Technical</option>
                 <option value="System Design">System Design</option>
                 <option value="Behavioural">Behavioural</option>
               </select>
               <input
+                aria-label="Scheduled time"
                 type="time"
                 value={newTime}
                 onChange={(e) => setNewTime(e.target.value)}
-                className="bg-[#050912] border border-[#16223b] rounded-lg px-3 py-2 text-xs text-white font-mono outline-none focus:border-blue-500"
+                className="bg-[#faf8ff] dark:bg-[#08050f] border border-[#e4ddf5] dark:border-[#26193f] rounded-lg px-3 py-2 text-xs text-[#140f1f] dark:text-white font-mono outline-none focus:border-violet-500"
               />
             </div>
             <button
@@ -287,11 +298,14 @@ export function CalendarWidget({
 
         {!hasEvents && !showScheduleForm ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center py-8">
-            <CalendarIcon size={36} className="mb-3 text-slate-600" />
-            <p className="text-sm font-semibold text-slate-300">
+            <CalendarIcon
+              size={36}
+              className="mb-3 text-violet-500/60 dark:text-violet-400/50"
+            />
+            <p className="text-sm font-semibold text-[#140f1f] dark:text-white">
               No sessions recorded for this date
             </p>
-            <p className="text-xs text-slate-500 mt-1 max-w-xs">
+            <p className="text-xs text-[#5a5170] dark:text-[#a69cbe] mt-1 max-w-xs">
               Schedule a practice session on this date or launch a live mock
               interview right now.
             </p>
@@ -299,7 +313,7 @@ export function CalendarWidget({
               <button
                 type="button"
                 onClick={() => setShowScheduleForm(true)}
-                className="px-4 py-2 rounded-xl bg-black hover:bg-[#0a1120] border border-[#16223b] text-xs font-semibold text-slate-200 transition-colors cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-white dark:bg-black hover:bg-[#f3effb] dark:hover:bg-[#120b1f] border border-[#e4ddf5] dark:border-[#26193f] text-xs font-semibold text-[#140f1f] dark:text-white transition-colors cursor-pointer"
               >
                 Add to Schedule
               </button>
@@ -316,26 +330,26 @@ export function CalendarWidget({
           <div className="space-y-5">
             {selectedUpcoming.length > 0 && (
               <div className="space-y-3">
-                <div className="flex items-center gap-2 text-xs font-bold text-cyan-400">
+                <div className="flex items-center gap-2 text-xs font-bold text-purple-700 dark:text-purple-400">
                   <Clock size={14} />
                   <span>Scheduled Practice</span>
                 </div>
                 {selectedUpcoming.map((session) => (
                   <div
                     key={session.id}
-                    className="p-4 rounded-xl border border-blue-500/30 bg-black flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                    className="p-4 rounded-xl border border-violet-500/35 bg-white dark:bg-black flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                   >
                     <div className="flex items-start gap-3">
-                      <div className="p-2 rounded-lg bg-blue-600/15 text-blue-400 shrink-0">
+                      <div className="p-2 rounded-lg bg-violet-100 dark:bg-violet-600/20 text-violet-700 dark:text-violet-400 shrink-0">
                         <Building size={16} />
                       </div>
                       <div>
-                        <div className="text-sm font-bold text-white">
+                        <div className="text-sm font-bold text-[#140f1f] dark:text-white">
                           {session.company}
                         </div>
-                        <div className="text-xs text-slate-400 mt-0.5">
+                        <div className="text-xs text-[#5a5170] dark:text-[#a69cbe] mt-0.5">
                           {session.role} · {session.type} ·{' '}
-                          <span className="font-mono tabular-nums text-cyan-300">
+                          <span className="font-mono tabular-nums text-violet-700 dark:text-violet-300">
                             {new Date(session.date).toLocaleTimeString([], {
                               hour: '2-digit',
                               minute: '2-digit',
@@ -364,7 +378,8 @@ export function CalendarWidget({
                       <button
                         type="button"
                         onClick={() => handleDeleteScheduled(session.id)}
-                        className="p-1.5 rounded-lg bg-[#050912] border border-[#16223b] text-slate-400 hover:text-rose-400 transition-colors cursor-pointer"
+                        aria-label={`Delete scheduled ${session.company} session`}
+                        className="p-1.5 rounded-lg bg-[#faf8ff] dark:bg-[#08050f] border border-[#e4ddf5] dark:border-[#26193f] text-[#5a5170] dark:text-[#a69cbe] hover:text-rose-600 dark:hover:text-rose-400 transition-colors cursor-pointer"
                         title="Remove scheduled session"
                       >
                         <Trash2 size={14} />
@@ -377,31 +392,31 @@ export function CalendarWidget({
 
             {selectedPast.length > 0 && (
               <div className="space-y-3">
-                <div className="flex items-center gap-2 text-xs font-bold text-emerald-400">
+                <div className="flex items-center gap-2 text-xs font-bold text-emerald-600 dark:text-emerald-400">
                   <CheckCircle2 size={14} />
                   <span>Completed Sessions</span>
                 </div>
                 {selectedPast.map((session) => (
                   <div
                     key={session.id}
-                    className="p-4 rounded-xl border border-[#16223b] bg-black space-y-2"
+                    className="p-4 rounded-xl border border-[#e4ddf5] dark:border-[#26193f] bg-white dark:bg-black space-y-2"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <div className="text-sm font-bold text-white">
+                        <div className="text-sm font-bold text-[#140f1f] dark:text-white">
                           {session.company}
                         </div>
-                        <div className="text-xs text-slate-400 mt-0.5">
+                        <div className="text-xs text-[#5a5170] dark:text-[#a69cbe] mt-0.5">
                           {session.role} · {session.crackProbability}
                         </div>
                       </div>
-                      <div className="text-sm font-bold font-mono tabular-nums text-emerald-400 flex items-center gap-1">
+                      <div className="text-sm font-bold font-mono tabular-nums text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                         <Target size={13} />
                         <span>{session.score}%</span>
                       </div>
                     </div>
                     {session.overallSummary && (
-                      <p className="text-xs text-slate-400 leading-relaxed line-clamp-2">
+                      <p className="text-xs text-[#5a5170] dark:text-[#a69cbe] leading-relaxed line-clamp-2">
                         {session.overallSummary}
                       </p>
                     )}

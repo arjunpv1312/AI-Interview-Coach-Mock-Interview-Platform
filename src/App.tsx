@@ -9,6 +9,7 @@ import {
   InterviewSession,
   InterviewConfig,
   ThemeVariant,
+  ColorMode,
 } from './types';
 import {
   INACTIVITY_LOCK_TIMEOUT_MS,
@@ -34,6 +35,7 @@ import { SuggestionsView } from './components/SuggestionsView';
 import { LearnerView } from './components/LearnerView';
 import { SecurityView } from './components/SecurityView';
 import { PublicCertificateView } from './components/PublicCertificateView';
+import { GuideModal } from './components/GuideModal';
 import { Logo } from './components/Logo';
 import {
   UserCircle,
@@ -43,13 +45,36 @@ import {
   Palette,
   ShieldCheck,
   Lock,
+  Sun,
+  Moon,
+  BookOpen,
+  Menu,
+  X,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 
 export const pageTransition = {
-  duration: 0.35,
+  duration: 0.3,
   ease: [0.16, 1, 0.3, 1] as const,
 };
+
+const COLOR_MODE_STORAGE_KEY = 'ic_color_mode';
+
+function applyHtmlTheme(mode: ColorMode, variant?: ThemeVariant) {
+  const root = document.documentElement;
+  if (mode === 'dark') {
+    root.classList.add('dark');
+    root.classList.remove('light');
+  } else {
+    root.classList.remove('dark');
+    root.classList.add('light');
+  }
+  if (variant) {
+    root.dataset.theme = variant;
+  } else if (!root.dataset.theme) {
+    root.dataset.theme = 'obsidian-violet';
+  }
+}
 
 export default function App() {
   const [view, setView] = useState<ViewState>('auth');
@@ -62,7 +87,17 @@ export default function App() {
     useState<Partial<InterviewConfig> | null>(null);
   const [currentSession, setCurrentSession] =
     useState<InterviewSession | null>(null);
+  const [colorMode, setColorMode] = useState<ColorMode>(() => {
+    try {
+      const saved = localStorage.getItem(COLOR_MODE_STORAGE_KEY);
+      return saved === 'light' ? 'light' : 'dark';
+    } catch {
+      return 'dark';
+    }
+  });
   const [themeDropdown, setThemeDropdown] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
   const [lockNotice, setLockNotice] = useState<string | null>(null);
   const [idleSecondsRemaining, setIdleSecondsRemaining] = useState<number | null>(
     null
@@ -70,6 +105,7 @@ export default function App() {
 
   const lastActivityRef = useRef<number>(Date.now());
   const lastVaultTouchRef = useRef<number>(0);
+  const themeMenuRef = useRef<HTMLDivElement>(null);
 
   const lockVaultWithNotice = useCallback((reason: string) => {
     clearVaultSession();
@@ -81,6 +117,8 @@ export default function App() {
     setCurrentSession(null);
     setSetupPrefill(null);
     setThemeDropdown(false);
+    setMobileMenuOpen(false);
+    setGuideOpen(false);
     setIdleSecondsRemaining(null);
     setLockNotice(reason);
     setView('auth');
@@ -89,12 +127,6 @@ export default function App() {
   const launchSetupWithPrefill = (prefill: Partial<InterviewConfig>) => {
     setSetupPrefill(prefill);
     setView('setup');
-  };
-
-  const handleThemeChange = (theme: ThemeVariant) => {
-    document.documentElement.dataset.theme = theme;
-    handleUpdateUser({ themePreference: theme });
-    setThemeDropdown(false);
   };
 
   const handleUpdateUser = (updatedProps: Partial<User>) => {
@@ -107,12 +139,57 @@ export default function App() {
     }
   };
 
-  useEffect(() => {
-    document.documentElement.classList.add('dark');
-    document.documentElement.classList.remove('light');
-    if (!document.documentElement.dataset.theme) {
-      document.documentElement.dataset.theme = 'amoled';
+  const handleThemeChange = (theme: ThemeVariant) => {
+    applyHtmlTheme(colorMode, theme);
+    handleUpdateUser({ themePreference: theme });
+    setThemeDropdown(false);
+  };
+
+  const handleToggleColorMode = () => {
+    const nextMode: ColorMode = colorMode === 'dark' ? 'light' : 'dark';
+    setColorMode(nextMode);
+    try {
+      localStorage.setItem(COLOR_MODE_STORAGE_KEY, nextMode);
+    } catch {
+      // ignore storage errors
     }
+    applyHtmlTheme(nextMode, user?.themePreference);
+    if (user) {
+      handleUpdateUser({ colorMode: nextMode });
+    }
+  };
+
+  const navigateTo = (nextView: ViewState) => {
+    if (nextView === 'setup') setSetupPrefill(null);
+    setMobileMenuOpen(false);
+    setThemeDropdown(false);
+    setView(nextView);
+  };
+
+  // Close theme dropdown on Escape or outside click
+  useEffect(() => {
+    if (!themeDropdown) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setThemeDropdown(false);
+    };
+    const onPointerDown = (e: MouseEvent) => {
+      if (
+        themeMenuRef.current &&
+        !themeMenuRef.current.contains(e.target as Node)
+      ) {
+        setThemeDropdown(false);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('mousedown', onPointerDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('mousedown', onPointerDown);
+    };
+  }, [themeDropdown]);
+
+  useEffect(() => {
+    applyHtmlTheme(colorMode, 'obsidian-violet');
 
     const params = new URLSearchParams(window.location.search);
     if (params.get('cert')) {
@@ -133,8 +210,12 @@ export default function App() {
             if (dbUser && active) {
               setUser(dbUser);
               lastActivityRef.current = Date.now();
-              document.documentElement.dataset.theme =
-                dbUser.themePreference || 'amoled';
+              const resolvedMode = dbUser.colorMode || colorMode;
+              setColorMode(resolvedMode);
+              applyHtmlTheme(
+                resolvedMode,
+                dbUser.themePreference || 'obsidian-violet'
+              );
               setView('dashboard');
             }
           } else {
@@ -171,7 +252,6 @@ export default function App() {
 
     const recordActivity = () => {
       const now = Date.now();
-      // Check first if the user woke from sleep past the 15-min limit
       if (now - lastActivityRef.current >= INACTIVITY_LOCK_TIMEOUT_MS) {
         lockVaultWithNotice(
           'Vault auto-locked after 15 minutes of inactivity. Sign in again to continue.'
@@ -182,7 +262,6 @@ export default function App() {
       lastActivityRef.current = now;
       setIdleSecondsRemaining(null);
 
-      // Persist sliding activity timestamp into encrypted vault session at most every 30s
       if (now - lastVaultTouchRef.current >= 30_000) {
         lastVaultTouchRef.current = now;
         touchVaultSessionActivity().catch(() => {});
@@ -269,19 +348,27 @@ export default function App() {
   };
 
   const themeOptions: { id: ThemeVariant; label: string; swatch: string }[] = [
-    { id: 'amoled', label: 'AMOLED Electric Blue', swatch: 'bg-blue-500' },
-    { id: 'cobalt', label: 'Deep Cobalt Noir', swatch: 'bg-indigo-500' },
-    { id: 'cyan', label: 'Arctic Cyan Black', swatch: 'bg-cyan-400' },
-    { id: 'obsidian', label: 'Obsidian Sapphire', swatch: 'bg-blue-700' },
+    { id: 'obsidian-violet', label: 'Obsidian Violet', swatch: 'bg-violet-600' },
+    { id: 'amethyst', label: 'Deep Amethyst', swatch: 'bg-purple-500' },
+    { id: 'orchid', label: 'Velvet Orchid', swatch: 'bg-fuchsia-500' },
+    { id: 'carbon-plum', label: 'Carbon Plum', swatch: 'bg-violet-800' },
+  ];
+
+  const navItems: { id: ViewState; label: string }[] = [
+    { id: 'dashboard', label: 'Dashboard' },
+    { id: 'setup', label: 'New Session' },
+    { id: 'bank', label: 'Study Bank' },
+    { id: 'history', label: 'History' },
+    { id: 'suggestions', label: 'Insights' },
   ];
 
   if (!vaultReady) {
     return (
-      <div className="min-h-screen bg-black text-slate-100 flex flex-col items-center justify-center gap-4">
-        <div className="w-11 h-11 rounded-xl border border-blue-500/30 bg-[#050912] flex items-center justify-center text-blue-400">
-          <Lock size={20} className="animate-pulse" />
+      <div className="min-h-screen bg-white text-[#140f1f] dark:bg-black dark:text-[#f5f3ff] flex flex-col items-center justify-center gap-4">
+        <div className="w-11 h-11 rounded-xl border border-violet-300 dark:border-violet-500/30 bg-[#faf8ff] dark:bg-[#08050f] flex items-center justify-center text-violet-700 dark:text-violet-400">
+          <Lock size={20} />
         </div>
-        <div className="text-xs font-mono text-slate-400">
+        <div className="text-xs font-mono text-[#5a5170] dark:text-[#a69cbe]">
           Unlocking AES-256-GCM Encrypted Vault...
         </div>
       </div>
@@ -289,123 +376,130 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-slate-100 font-sans selection:bg-blue-600/30 overflow-x-hidden relative flex flex-col">
-      {/* Subtle AMOLED blue atmospheric lighting */}
+    <div className="min-h-screen bg-white text-[#140f1f] dark:bg-black dark:text-[#f5f3ff] font-sans selection:bg-violet-600/30 overflow-x-hidden relative flex flex-col transition-colors duration-200">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[200] focus:px-4 focus:py-2 focus:rounded-lg focus:bg-violet-700 focus:text-white focus:text-xs focus:font-semibold"
+      >
+        Skip to main content
+      </a>
+
+      {/* Subtle Violet atmospheric depth */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-        <div className="absolute -top-[35%] -left-[15%] w-[60%] h-[60%] rounded-full bg-blue-600/10 blur-[150px]" />
-        <div className="absolute top-[55%] -right-[15%] w-[55%] h-[55%] rounded-full bg-cyan-500/8 blur-[160px]" />
+        <div className="absolute -top-[35%] -left-[15%] w-[60%] h-[60%] rounded-full bg-violet-500/10 dark:bg-violet-600/12 blur-[150px]" />
+        <div className="absolute top-[55%] -right-[15%] w-[55%] h-[55%] rounded-full bg-purple-400/10 dark:bg-purple-500/10 blur-[160px]" />
       </div>
 
-      {/* Top Bar (3-Zone Contract) */}
+      {/* Top Bar */}
       {view !== 'live' && view !== 'auth' && view !== 'public-cert' && (
-        <header className="border-b border-[#16223b] bg-black/90 backdrop-blur-lg sticky top-0 z-50">
-          <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between gap-8">
+        <header className="border-b border-[#e4ddf5] dark:border-[#26193f] bg-white/90 dark:bg-black/90 backdrop-blur-lg sticky top-0 z-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4 sm:gap-8">
             <button
               type="button"
-              onClick={() => setView('dashboard')}
-              className="flex items-center gap-3 whitespace-nowrap shrink-0 cursor-pointer"
+              onClick={() => navigateTo('dashboard')}
+              className="flex items-center gap-3 whitespace-nowrap shrink-0 cursor-pointer rounded-lg"
             >
-              <div className="w-8 h-8 rounded-lg border border-blue-500/30 overflow-hidden shrink-0">
+              <div className="w-8 h-8 rounded-lg border border-violet-300 dark:border-violet-500/35 overflow-hidden shrink-0">
                 <Logo />
               </div>
-              <span className="font-bold text-base tracking-tight text-white">
+              <span className="font-bold text-base tracking-tight text-[#140f1f] dark:text-white">
                 Interview Copilot
               </span>
             </button>
 
-            <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
-              <button
-                type="button"
-                onClick={() => setView('dashboard')}
-                className={`whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
-                  view === 'dashboard'
-                    ? 'text-blue-400'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                Dashboard
-              </button>
-              <button
-                type="button"
-                onClick={() => setView('setup')}
-                className={`whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
-                  view === 'setup'
-                    ? 'text-blue-400'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                New Session
-              </button>
-              <button
-                type="button"
-                onClick={() => setView('bank')}
-                className={`whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
-                  view === 'bank'
-                    ? 'text-blue-400'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                Study Bank
-              </button>
-              <button
-                type="button"
-                onClick={() => setView('history')}
-                className={`whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
-                  view === 'history'
-                    ? 'text-blue-400'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                History
-              </button>
-              <button
-                type="button"
-                onClick={() => setView('suggestions')}
-                className={`whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
-                  view === 'suggestions'
-                    ? 'text-blue-400'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                Insights
-              </button>
+            <nav
+              aria-label="Primary navigation"
+              className="hidden md:flex items-center gap-6 text-sm font-medium"
+            >
+              {navItems.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => navigateTo(item.id)}
+                  className={`whitespace-nowrap shrink-0 transition-colors cursor-pointer py-1 ${
+                    view === item.id
+                      ? 'text-violet-700 dark:text-violet-400 font-semibold border-b-2 border-violet-600 dark:border-violet-400'
+                      : 'text-[#5a5170] dark:text-[#a69cbe] hover:text-[#140f1f] dark:hover:text-white'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
             </nav>
 
-            <div className="flex items-center gap-3 shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               <button
                 type="button"
-                onClick={() => setView('security')}
+                onClick={() => setGuideOpen(true)}
+                className="p-2 rounded-lg text-[#5a5170] dark:text-[#a69cbe] hover:text-[#140f1f] dark:hover:text-white hover:bg-[#f3effb] dark:hover:bg-[#120b1f] transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-medium"
+                aria-label="Open Platform Guide"
+                title="Platform Guide & Accessibility"
+              >
+                <BookOpen size={17} />
+                <span className="hidden xl:inline">Guide</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => navigateTo('security')}
                 className={`p-2 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-medium ${
                   view === 'security'
-                    ? 'text-emerald-400 bg-[#0a1120]'
-                    : 'text-slate-400 hover:text-white hover:bg-[#0a1120]'
+                    ? 'text-emerald-700 dark:text-emerald-400 bg-[#f3effb] dark:bg-[#120b1f]'
+                    : 'text-[#5a5170] dark:text-[#a69cbe] hover:text-[#140f1f] dark:hover:text-white hover:bg-[#f3effb] dark:hover:bg-[#120b1f]'
                 }`}
+                aria-label="Live Encryption and Security Audit"
                 title="Live Encryption & Security Audit"
               >
                 <ShieldCheck size={17} />
-                <span className="hidden lg:inline">Security</span>
+                <span className="hidden xl:inline">Security</span>
               </button>
 
-              <div className="relative">
+              <button
+                type="button"
+                onClick={handleToggleColorMode}
+                className="p-2 rounded-lg text-[#5a5170] dark:text-[#a69cbe] hover:text-[#140f1f] dark:hover:text-white hover:bg-[#f3effb] dark:hover:bg-[#120b1f] transition-colors cursor-pointer"
+                aria-label={
+                  colorMode === 'dark'
+                    ? 'Switch to White Light Mode'
+                    : 'Switch to Black Dark Mode'
+                }
+                title={
+                  colorMode === 'dark'
+                    ? 'Switch to White Light Mode'
+                    : 'Switch to Black Dark Mode'
+                }
+              >
+                {colorMode === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+              </button>
+
+              <div className="relative" ref={themeMenuRef}>
                 <button
                   type="button"
                   onClick={() => setThemeDropdown(!themeDropdown)}
-                  className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-[#0a1120] transition-colors cursor-pointer"
-                  title="AMOLED Blue Theme Variants"
+                  aria-expanded={themeDropdown}
+                  aria-haspopup="menu"
+                  aria-label="Violet accent variants"
+                  className="p-2 text-[#5a5170] dark:text-[#a69cbe] hover:text-[#140f1f] dark:hover:text-white rounded-lg hover:bg-[#f3effb] dark:hover:bg-[#120b1f] transition-colors cursor-pointer"
+                  title="Violet Theme Variants"
                 >
                   <Palette size={17} />
                 </button>
                 {themeDropdown && (
-                  <div className="absolute right-0 mt-2 w-56 bg-[#050912] border border-[#16223b] rounded-xl shadow-2xl overflow-hidden z-[100]">
+                  <div
+                    role="menu"
+                    aria-label="Select violet accent palette"
+                    className="absolute right-0 mt-2 w-52 bg-white dark:bg-[#08050f] border border-[#e4ddf5] dark:border-[#26193f] rounded-xl shadow-2xl overflow-hidden z-[100]"
+                  >
                     {themeOptions.map((opt) => (
                       <button
                         type="button"
+                        role="menuitem"
                         key={opt.id}
                         onClick={() => handleThemeChange(opt.id)}
-                        className="w-full text-left px-4 py-3 hover:bg-[#0a1120] text-xs font-medium text-slate-200 flex items-center gap-3 cursor-pointer"
+                        className="w-full text-left px-4 py-3 hover:bg-[#f3effb] dark:hover:bg-[#120b1f] text-xs font-medium text-[#140f1f] dark:text-[#f5f3ff] flex items-center gap-3 cursor-pointer"
                       >
                         <span
-                          className={`w-3 h-3 rounded-full ${opt.swatch}`}
+                          className={`w-3 h-3 rounded-full shrink-0 ${opt.swatch}`}
                         />
                         <span>{opt.label}</span>
                       </button>
@@ -414,11 +508,12 @@ export default function App() {
                 )}
               </div>
 
-              <div className="flex items-center gap-2 text-xs font-medium text-slate-300 pl-2 border-l border-[#16223b]">
-                <UserCircle size={18} className="text-blue-400" />
-                <span className="hidden sm:inline max-w-[120px] truncate">
-                  {user?.fullName}
-                </span>
+              <div className="hidden sm:flex items-center gap-2 text-xs font-medium text-[#362f47] dark:text-[#d8d0ea] pl-2 border-l border-[#e4ddf5] dark:border-[#26193f]">
+                <UserCircle
+                  size={18}
+                  className="text-violet-700 dark:text-violet-400"
+                />
+                <span className="max-w-[110px] truncate">{user?.fullName}</span>
                 <button
                   type="button"
                   onClick={() => {
@@ -426,26 +521,102 @@ export default function App() {
                     setUser(null);
                     setView('auth');
                   }}
-                  className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-[#0a1120] transition-colors cursor-pointer"
+                  className="p-2 text-[#5a5170] dark:text-[#a69cbe] hover:text-[#140f1f] dark:hover:text-white rounded-lg hover:bg-[#f3effb] dark:hover:bg-[#120b1f] transition-colors cursor-pointer"
+                  aria-label="Sign out"
                   title="Sign Out"
                 >
                   <LogOut size={16} />
                 </button>
               </div>
+
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                aria-expanded={mobileMenuOpen}
+                aria-label="Toggle mobile navigation"
+                className="md:hidden p-2 rounded-lg text-[#5a5170] dark:text-[#a69cbe] hover:text-[#140f1f] dark:hover:text-white hover:bg-[#f3effb] dark:hover:bg-[#120b1f] cursor-pointer"
+              >
+                {mobileMenuOpen ? <X size={19} /> : <Menu size={19} />}
+              </button>
             </div>
           </div>
+
+          {/* Mobile Navigation Drawer */}
+          {mobileMenuOpen && (
+            <nav
+              aria-label="Mobile navigation"
+              className="md:hidden border-t border-[#e4ddf5] dark:border-[#26193f] bg-white dark:bg-[#08050f] px-4 py-3 space-y-1"
+            >
+              {navItems.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => navigateTo(item.id)}
+                  className={`w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-colors ${
+                    view === item.id
+                      ? 'bg-violet-600/15 text-violet-700 dark:text-violet-300 font-semibold'
+                      : 'text-[#362f47] dark:text-[#d8d0ea] hover:bg-[#f3effb] dark:hover:bg-[#120b1f]'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => navigateTo('security')}
+                className="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium text-[#362f47] dark:text-[#d8d0ea] hover:bg-[#f3effb] dark:hover:bg-[#120b1f] cursor-pointer"
+              >
+                Security Audit
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  setGuideOpen(true);
+                }}
+                className="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium text-[#362f47] dark:text-[#d8d0ea] hover:bg-[#f3effb] dark:hover:bg-[#120b1f] cursor-pointer"
+              >
+                Platform Guide
+              </button>
+              <div className="pt-2 mt-2 border-t border-[#e4ddf5] dark:border-[#26193f] flex items-center justify-between px-3 py-1">
+                <span className="text-xs font-medium text-[#5a5170] dark:text-[#a69cbe] truncate">
+                  {user?.fullName}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    clearVaultSession();
+                    setUser(null);
+                    setMobileMenuOpen(false);
+                    setView('auth');
+                  }}
+                  className="text-xs font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <LogOut size={14} />
+                  <span>Sign Out</span>
+                </button>
+              </div>
+            </nav>
+          )}
         </header>
       )}
 
       {/* Pre-lock warning banner in final 60 seconds of inactivity */}
       {user && idleSecondsRemaining !== null && (
-        <div className="relative z-40 bg-blue-950/90 border-b border-blue-500/40 px-4 py-2.5 text-xs text-blue-100">
+        <div
+          role="status"
+          aria-live="polite"
+          className="relative z-40 bg-violet-100 dark:bg-violet-950/90 border-b border-violet-400 dark:border-violet-500/40 px-4 py-2.5 text-xs text-violet-950 dark:text-violet-100"
+        >
           <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2 font-medium">
-              <Lock size={14} className="text-cyan-400 shrink-0" />
+              <Lock
+                size={14}
+                className="text-violet-700 dark:text-violet-300 shrink-0"
+              />
               <span>
                 Inactivity detected — CryptoVault session will lock in{' '}
-                <strong className="font-mono tabular-nums text-cyan-300">
+                <strong className="font-mono tabular-nums text-violet-800 dark:text-purple-300">
                   {idleSecondsRemaining}s
                 </strong>
                 .
@@ -458,7 +629,7 @@ export default function App() {
                 setIdleSecondsRemaining(null);
                 touchVaultSessionActivity().catch(() => {});
               }}
-              className="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold cursor-pointer whitespace-nowrap"
+              className="px-3 py-1 rounded-lg amoled-btn-primary text-white font-semibold cursor-pointer whitespace-nowrap"
             >
               Stay Signed In
             </button>
@@ -468,6 +639,7 @@ export default function App() {
 
       {/* Main Content */}
       <main
+        id="main-content"
         className={`relative z-10 flex-1 flex flex-col ${
           view === 'auth' || view === 'public-cert'
             ? 'p-0'
@@ -489,6 +661,8 @@ export default function App() {
               <AuthView
                 lockNotice={lockNotice}
                 onDismissLockNotice={() => setLockNotice(null)}
+                colorMode={colorMode}
+                onToggleColorMode={handleToggleColorMode}
                 onLogin={async (u, rememberMe) => {
                   setLockNotice(null);
                   lastActivityRef.current = Date.now();
@@ -497,8 +671,12 @@ export default function App() {
                   } else {
                     clearVaultSession();
                   }
-                  document.documentElement.dataset.theme =
-                    u.themePreference || 'amoled';
+                  const nextMode = u.colorMode || colorMode;
+                  setColorMode(nextMode);
+                  applyHtmlTheme(
+                    nextMode,
+                    u.themePreference || 'obsidian-violet'
+                  );
                   setUser(u);
                   setView('dashboard');
                 }}
@@ -527,6 +705,8 @@ export default function App() {
             >
               <DashboardView
                 user={user}
+                colorMode={colorMode}
+                onOpenGuide={() => setGuideOpen(true)}
                 onNavigate={(nextView) => {
                   if (nextView === 'setup') setSetupPrefill(null);
                   setView(nextView);
@@ -781,14 +961,14 @@ export default function App() {
       </main>
 
       {view !== 'live' && view !== 'auth' && (
-        <footer className="w-full mt-auto py-8 border-t border-[#16223b] bg-black text-center text-slate-400 relative z-10">
+        <footer className="w-full mt-auto py-8 border-t border-[#e4ddf5] dark:border-[#26193f] bg-white dark:bg-black text-center text-[#5a5170] dark:text-[#a69cbe] relative z-10">
           <div className="flex flex-col items-center justify-center space-y-4">
             <div className="flex items-center gap-4">
               <a
                 href="https://www.linkedin.com/in/arjun-pv1312"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2.5 bg-[#050912] hover:bg-blue-600 hover:text-white rounded-xl transition-all border border-[#16223b]"
+                className="p-2.5 bg-[#faf8ff] dark:bg-[#08050f] hover:bg-violet-600 hover:text-white rounded-xl transition-all border border-[#e4ddf5] dark:border-[#26193f]"
                 aria-label="LinkedIn"
               >
                 <svg
@@ -804,7 +984,7 @@ export default function App() {
                 href="https://personal-portfolio--serenayt06.replit.app"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2.5 bg-[#050912] hover:bg-blue-600 hover:text-white rounded-xl transition-all border border-[#16223b]"
+                className="p-2.5 bg-[#faf8ff] dark:bg-[#08050f] hover:bg-violet-600 hover:text-white rounded-xl transition-all border border-[#e4ddf5] dark:border-[#26193f]"
                 aria-label="Portfolio"
               >
                 <Globe className="w-4 h-4" />
@@ -813,18 +993,26 @@ export default function App() {
                 href="https://ais-pre-dy4l4r6gvgehsxaprdkgra-893539578143.asia-southeast1.run.app/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2.5 bg-[#050912] hover:bg-blue-600 hover:text-white rounded-xl transition-all border border-[#16223b]"
+                className="p-2.5 bg-[#faf8ff] dark:bg-[#08050f] hover:bg-violet-600 hover:text-white rounded-xl transition-all border border-[#e4ddf5] dark:border-[#26193f]"
                 aria-label="AI Resume Analyzer"
               >
                 <FileText className="w-4 h-4" />
               </a>
             </div>
-            <div className="text-xs text-slate-500">
+            <div className="text-xs text-[#5a5170] dark:text-[#a69cbe]">
               Created by Arjun PV · Interview Copilot Pro · AES-256-GCM Encrypted
             </div>
           </div>
         </footer>
       )}
+
+      <GuideModal
+        isOpen={guideOpen}
+        onClose={() => setGuideOpen(false)}
+        onNavigate={navigateTo}
+        colorMode={colorMode}
+        onToggleColorMode={handleToggleColorMode}
+      />
     </div>
   );
 }

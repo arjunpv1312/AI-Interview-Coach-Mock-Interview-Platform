@@ -87,7 +87,7 @@ export function SetupView({
 
     setParsing(true);
     try {
-      let payload: any = {
+      const payload: any = {
         fileName: file.name,
         mimeType: file.type,
       };
@@ -150,15 +150,15 @@ export function SetupView({
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-12">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-[#16223b] pb-6">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-[#e4ddf5] dark:border-[#26193f] pb-6">
         <div>
-          <p className="text-xs font-medium text-blue-400 mb-1.5">
+          <p className="text-xs font-semibold text-violet-700 dark:text-violet-400 mb-1.5">
             Session Configuration
           </p>
-          <h1 className="text-3xl font-bold text-white tracking-tight">
+          <h1 className="text-3xl font-bold text-[#140f1f] dark:text-white tracking-tight [text-wrap:balance]">
             Configure Your Resume-Grounded Interview
           </h1>
-          <p className="text-slate-400 text-sm mt-1">
+          <p className="text-[#5a5170] dark:text-[#a69cbe] text-sm mt-1">
             Upload your resume to anchor opening probes in your real projects,
             then calibrate role, difficulty, and interviewer rigor.
           </p>
@@ -166,7 +166,7 @@ export function SetupView({
         <button
           type="button"
           onClick={onCancel}
-          className="text-sm font-medium text-slate-400 hover:text-white transition-colors self-start md:self-auto cursor-pointer"
+          className="text-sm font-medium text-[#5a5170] dark:text-[#a69cbe] hover:text-[#140f1f] dark:hover:text-white transition-colors self-start md:self-auto cursor-pointer"
         >
           Back to Dashboard
         </button>
@@ -178,8 +178,11 @@ export function SetupView({
           <div className="amoled-surface rounded-2xl p-6 space-y-5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <FileText size={18} className="text-blue-400" />
-                <h2 className="text-base font-bold text-white">
+                <FileText
+                  size={18}
+                  className="text-violet-700 dark:text-violet-400"
+                />
+                <h2 className="text-base font-bold text-[#140f1f] dark:text-white">
                   Resume Intelligence
                 </h2>
               </div>
@@ -187,7 +190,8 @@ export function SetupView({
                 <button
                   type="button"
                   onClick={handleClearResume}
-                  className="text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1 cursor-pointer"
+                  aria-label="Remove uploaded resume"
+                  className="text-xs text-rose-600 dark:text-rose-400 hover:text-rose-500 dark:hover:text-rose-300 flex items-center gap-1 cursor-pointer"
                 >
                   <Trash2 size={13} />
                   <span>Remove</span>
@@ -195,8 +199,21 @@ export function SetupView({
               )}
             </div>
 
-            {/* Dropzone */}
+            {/* Keyboard & Drag-and-Drop Dropzone */}
             <div
+              role="button"
+              tabIndex={0}
+              aria-label={
+                resume
+                  ? 'Replace resume file. Press Enter or Space to browse.'
+                  : 'Upload PDF, DOCX, or TXT resume. Press Enter or Space to browse.'
+              }
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  fileInputRef.current?.click();
+                }
+              }}
               onDragOver={(e) => {
                 e.preventDefault();
                 setIsDragging(true);
@@ -211,8 +228,8 @@ export function SetupView({
               onClick={() => fileInputRef.current?.click()}
               className={`border border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
                 isDragging
-                  ? 'border-blue-400 bg-blue-600/10'
-                  : 'border-[#253659] bg-black/70 hover:border-blue-500/60 hover:bg-[#070d1a]'
+                  ? 'border-violet-500 bg-violet-600/10'
+                  : 'border-[#d3c8ef] dark:border-[#352459] bg-white dark:bg-black/80 hover:border-violet-500 hover:bg-[#f3effb] dark:hover:bg-[#120b1f]'
               }`}
             >
               <input
@@ -220,6 +237,8 @@ export function SetupView({
                 type="file"
                 accept=".pdf,.docx,.txt"
                 className="hidden"
+                aria-hidden="true"
+                tabIndex={-1}
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (file) handleResumeFile(file);
@@ -227,69 +246,80 @@ export function SetupView({
               />
               {parsing ? (
                 <div className="flex flex-col items-center gap-3 py-2">
-                  <Loader2 size={28} className="text-blue-400 animate-spin" />
-                  <div className="text-sm font-semibold text-white">
-                    Analyzing Resume with AI...
+                  <Loader2
+                    size={28}
+                    className="text-violet-700 dark:text-violet-400 animate-spin"
+                  />
+                  <div className="text-sm font-semibold text-[#140f1f] dark:text-white">
+                    Analyzing Resume...
                   </div>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-[#5a5170] dark:text-[#a69cbe]">
                     Extracting projects, stack depth, and opening interview
                     questions.
                   </p>
                 </div>
               ) : (
                 <div className="flex flex-col items-center gap-2.5 py-1">
-                  <div className="w-11 h-11 rounded-xl bg-blue-600/15 border border-blue-500/30 flex items-center justify-center text-blue-400">
+                  <div className="w-11 h-11 rounded-xl bg-violet-100 dark:bg-violet-600/20 border border-violet-300 dark:border-violet-500/35 flex items-center justify-center text-violet-700 dark:text-violet-400">
                     <Upload size={20} />
                   </div>
-                  <div className="text-sm font-semibold text-white">
+                  <div className="text-sm font-semibold text-[#140f1f] dark:text-white">
                     {resume
                       ? 'Replace Resume File'
                       : 'Upload PDF, DOCX, or TXT Resume'}
                   </div>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-[#5a5170] dark:text-[#a69cbe]">
                     Drag and drop or browse · Max 10 MB
                   </p>
                 </div>
               )}
             </div>
 
-            {parseError && (
-              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/40 text-rose-300 text-xs flex items-center gap-2">
-                <AlertCircle size={15} className="shrink-0" />
-                <span>{parseError}</span>
-              </div>
-            )}
+            <div aria-live="polite">
+              {parseError && (
+                <div
+                  role="alert"
+                  className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/40 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2"
+                >
+                  <AlertCircle size={15} className="shrink-0" />
+                  <span>{parseError}</span>
+                </div>
+              )}
+            </div>
 
             {/* Parsed Resume Snapshot */}
             {resume ? (
-              <div className="space-y-4 pt-2 border-t border-[#16223b]">
+              <div className="space-y-4 pt-2 border-t border-[#e4ddf5] dark:border-[#26193f]">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <div className="flex items-center gap-2 text-sm font-bold text-white">
-                      <CheckCircle2 size={15} className="text-emerald-400" />
+                    <div className="flex items-center gap-2 text-sm font-bold text-[#140f1f] dark:text-white">
+                      <CheckCircle2
+                        size={15}
+                        className="text-emerald-600 dark:text-emerald-400"
+                      />
                       <span>{resume.candidateName}</span>
                     </div>
-                    <p className="text-xs text-slate-400 mt-0.5">
+                    <p className="text-xs text-[#5a5170] dark:text-[#a69cbe] mt-0.5">
                       {resume.headline} · {resume.fileName}
                     </p>
                   </div>
-                  <span className="text-xs font-mono text-blue-400 tabular-nums shrink-0">
+                  <span className="text-xs font-mono text-violet-700 dark:text-violet-400 tabular-nums shrink-0 font-semibold">
                     {resume.yearsExperience}y exp
                   </span>
                 </div>
 
                 {resume.rawSummary && (
-                  <p className="text-xs text-slate-300 leading-relaxed bg-black/60 border border-[#16223b] rounded-xl p-3">
+                  <p className="text-xs text-[#362f47] dark:text-[#d8d0ea] leading-relaxed bg-white dark:bg-black/70 border border-[#e4ddf5] dark:border-[#26193f] rounded-xl p-3">
                     {resume.rawSummary}
                   </p>
                 )}
 
                 {resume.skills.length > 0 && (
                   <div className="space-y-1.5">
-                    <div className="text-xs font-medium text-slate-400">
+                    <div className="text-xs font-medium text-[#5a5170] dark:text-[#a69cbe]">
                       Detected Stack ({resume.skills.length})
                     </div>
-                    <p className="text-xs text-blue-300 leading-relaxed">
+                    <p className="text-xs text-violet-700 dark:text-violet-300 leading-relaxed">
                       {resume.skills.slice(0, 14).join(' · ')}
                     </p>
                   </div>
@@ -297,19 +327,19 @@ export function SetupView({
 
                 {resume.projects.length > 0 && (
                   <div className="space-y-2">
-                    <div className="text-xs font-medium text-slate-400">
+                    <div className="text-xs font-medium text-[#5a5170] dark:text-[#a69cbe]">
                       Projects Targeted for Opening Questions
                     </div>
                     <div className="space-y-2">
                       {resume.projects.slice(0, 3).map((proj, idx) => (
                         <div
                           key={idx}
-                          className="rounded-xl bg-black/60 border border-[#16223b] p-3"
+                          className="rounded-xl bg-white dark:bg-black/70 border border-[#e4ddf5] dark:border-[#26193f] p-3"
                         >
-                          <div className="text-xs font-semibold text-white">
+                          <div className="text-xs font-semibold text-[#140f1f] dark:text-white">
                             {proj.name}
                           </div>
-                          <div className="text-[11px] text-slate-400 mt-0.5 line-clamp-2">
+                          <div className="text-[11px] text-[#5a5170] dark:text-[#a69cbe] mt-0.5 line-clamp-2">
                             {proj.highlights}
                           </div>
                         </div>
@@ -319,8 +349,8 @@ export function SetupView({
                 )}
 
                 {/* Resume Behavior Toggles */}
-                <div className="space-y-2.5 pt-2 border-t border-[#16223b]">
-                  <label className="flex items-center justify-between gap-3 text-xs text-slate-300 cursor-pointer">
+                <div className="space-y-2.5 pt-2 border-t border-[#e4ddf5] dark:border-[#26193f]">
+                  <label className="flex items-center justify-between gap-3 text-xs text-[#362f47] dark:text-[#d8d0ea] cursor-pointer">
                     <span>Start opening stage from resume projects</span>
                     <input
                       type="checkbox"
@@ -331,22 +361,22 @@ export function SetupView({
                           startWithResume: e.target.checked,
                         })
                       }
-                      className="w-4 h-4 accent-blue-600 cursor-pointer"
+                      className="w-4 h-4 accent-violet-600 cursor-pointer"
                     />
                   </label>
-                  <label className="flex items-center justify-between gap-3 text-xs text-slate-300 cursor-pointer">
-                    <span>Save parsed resume to my profile</span>
+                  <label className="flex items-center justify-between gap-3 text-xs text-[#362f47] dark:text-[#d8d0ea] cursor-pointer">
+                    <span>Save parsed resume to encrypted profile</span>
                     <input
                       type="checkbox"
                       checked={saveToProfile}
                       onChange={(e) => setSaveToProfile(e.target.checked)}
-                      className="w-4 h-4 accent-blue-600 cursor-pointer"
+                      className="w-4 h-4 accent-violet-600 cursor-pointer"
                     />
                   </label>
                 </div>
               </div>
             ) : (
-              <div className="rounded-xl bg-black/60 border border-[#16223b] p-4 text-xs text-slate-400 leading-relaxed">
+              <div className="rounded-xl bg-white dark:bg-black/70 border border-[#e4ddf5] dark:border-[#26193f] p-4 text-xs text-[#5a5170] dark:text-[#a69cbe] leading-relaxed">
                 No resume attached yet. Uploading your resume unlocks
                 project-specific opening questions and tailored architecture
                 follow-ups instead of generic prompts.
@@ -360,12 +390,19 @@ export function SetupView({
           {/* Target Company & Role */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="space-y-2">
-              <label className="flex items-center gap-2 text-xs font-semibold text-slate-300">
-                <Building2 size={15} className="text-blue-400" />
-                Target Company
+              <label
+                htmlFor="setup-company"
+                className="flex items-center gap-2 text-xs font-semibold text-[#362f47] dark:text-[#d8d0ea]"
+              >
+                <Building2
+                  size={15}
+                  className="text-violet-700 dark:text-violet-400"
+                />
+                <span>Target Company</span>
               </label>
               <select
-                className="w-full bg-black border border-[#16223b] text-white text-sm rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none transition-all cursor-pointer"
+                id="setup-company"
+                className="w-full bg-white dark:bg-black border border-[#e4ddf5] dark:border-[#26193f] text-[#140f1f] dark:text-white text-sm rounded-xl p-3 focus:ring-2 focus:ring-violet-500 outline-none transition-all cursor-pointer"
                 value={config.company}
                 onChange={(e) =>
                   setConfig({ ...config, company: e.target.value })
@@ -383,12 +420,19 @@ export function SetupView({
             </div>
 
             <div className="space-y-2">
-              <label className="flex items-center gap-2 text-xs font-semibold text-slate-300">
-                <Briefcase size={15} className="text-cyan-400" />
-                Target Role
+              <label
+                htmlFor="setup-role"
+                className="flex items-center gap-2 text-xs font-semibold text-[#362f47] dark:text-[#d8d0ea]"
+              >
+                <Briefcase
+                  size={15}
+                  className="text-purple-700 dark:text-purple-400"
+                />
+                <span>Target Role</span>
               </label>
               <select
-                className="w-full bg-black border border-[#16223b] text-white text-sm rounded-xl p-3 focus:ring-2 focus:ring-blue-500 outline-none transition-all cursor-pointer"
+                id="setup-role"
+                className="w-full bg-white dark:bg-black border border-[#e4ddf5] dark:border-[#26193f] text-[#140f1f] dark:text-white text-sm rounded-xl p-3 focus:ring-2 focus:ring-violet-500 outline-none transition-all cursor-pointer"
                 value={config.role}
                 onChange={(e) => setConfig({ ...config, role: e.target.value })}
               >
@@ -406,20 +450,24 @@ export function SetupView({
 
           {/* Interview Round Type */}
           <div className="space-y-3">
-            <label className="flex items-center gap-2 text-xs font-semibold text-slate-300">
-              <FileCode2 size={15} className="text-blue-400" />
-              Interview Round Type
-            </label>
+            <span className="flex items-center gap-2 text-xs font-semibold text-[#362f47] dark:text-[#d8d0ea]">
+              <FileCode2
+                size={15}
+                className="text-violet-700 dark:text-violet-400"
+              />
+              <span>Interview Round Type</span>
+            </span>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {['Technical', 'Behavioural', 'System Design'].map((type) => (
                 <button
                   type="button"
                   key={type}
+                  aria-pressed={config.type === type}
                   onClick={() => setConfig({ ...config, type })}
                   className={`py-3 px-4 rounded-xl text-sm font-semibold border transition-all cursor-pointer whitespace-nowrap ${
                     config.type === type
-                      ? 'bg-blue-600/20 border-blue-500 text-blue-300 shadow-lg shadow-blue-950/30'
-                      : 'bg-black border-[#16223b] text-slate-400 hover:text-white hover:border-[#253659]'
+                      ? 'bg-violet-600/15 border-violet-500 text-violet-800 dark:text-violet-300 shadow-sm'
+                      : 'bg-white dark:bg-black border-[#e4ddf5] dark:border-[#26193f] text-[#5a5170] dark:text-[#a69cbe] hover:text-[#140f1f] dark:hover:text-white hover:border-violet-400'
                   }`}
                 >
                   {type}
@@ -430,16 +478,23 @@ export function SetupView({
 
           {/* Experience Slider */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between text-xs font-semibold text-slate-300">
-              <span className="flex items-center gap-2">
-                <Users size={15} className="text-cyan-400" />
-                Experience Calibration
-              </span>
-              <span className="font-mono text-white tabular-nums">
+            <div className="flex items-center justify-between text-xs font-semibold text-[#362f47] dark:text-[#d8d0ea]">
+              <label
+                htmlFor="setup-experience"
+                className="flex items-center gap-2"
+              >
+                <Users
+                  size={15}
+                  className="text-purple-700 dark:text-purple-400"
+                />
+                <span>Experience Calibration</span>
+              </label>
+              <span className="font-mono text-[#140f1f] dark:text-white tabular-nums">
                 {config.experience} years
               </span>
             </div>
             <input
+              id="setup-experience"
               type="range"
               min="0"
               max="15"
@@ -450,9 +505,9 @@ export function SetupView({
                   experience: parseInt(e.target.value, 10),
                 })
               }
-              className="w-full accent-blue-500 h-2 bg-[#0a1120] rounded-lg appearance-none cursor-pointer"
+              className="w-full accent-violet-600 h-2 bg-[#f3effb] dark:bg-[#120b1f] rounded-lg appearance-none cursor-pointer"
             />
-            <div className="flex justify-between text-[11px] text-slate-500">
+            <div className="flex justify-between text-[11px] text-[#5a5170] dark:text-[#a69cbe]">
               <span>Entry (0 yrs)</span>
               <span>Mid-Level (5 yrs)</span>
               <span>Staff / Principal (15+ yrs)</span>
@@ -461,24 +516,28 @@ export function SetupView({
 
           {/* Custom Difficulty */}
           <div className="space-y-3">
-            <label className="flex items-center gap-2 text-xs font-semibold text-slate-300">
-              <Sliders size={15} className="text-blue-400" />
-              Difficulty Calibration
-            </label>
+            <span className="flex items-center gap-2 text-xs font-semibold text-[#362f47] dark:text-[#d8d0ea]">
+              <Sliders
+                size={15}
+                className="text-violet-700 dark:text-violet-400"
+              />
+              <span>Difficulty Calibration</span>
+            </span>
             <div className="grid grid-cols-3 gap-3">
               {(['Easy', 'Medium', 'Hard'] as const).map((diff) => (
                 <button
                   type="button"
                   key={diff}
+                  aria-pressed={config.difficulty === diff}
                   onClick={() => setConfig({ ...config, difficulty: diff })}
                   className={`py-3 px-4 rounded-xl text-sm font-semibold border transition-all cursor-pointer ${
                     config.difficulty === diff
                       ? diff === 'Easy'
-                        ? 'bg-emerald-500/15 border-emerald-500 text-emerald-300'
+                        ? 'bg-emerald-500/15 border-emerald-500 text-emerald-700 dark:text-emerald-300'
                         : diff === 'Medium'
-                          ? 'bg-blue-600/20 border-blue-500 text-blue-300'
-                          : 'bg-rose-500/15 border-rose-500 text-rose-300'
-                      : 'bg-black border-[#16223b] text-slate-400 hover:text-white'
+                          ? 'bg-violet-600/15 border-violet-500 text-violet-800 dark:text-violet-300'
+                          : 'bg-rose-500/15 border-rose-500 text-rose-700 dark:text-rose-300'
+                      : 'bg-white dark:bg-black border-[#e4ddf5] dark:border-[#26193f] text-[#5a5170] dark:text-[#a69cbe] hover:text-[#140f1f] dark:hover:text-white'
                   }`}
                 >
                   {diff}
@@ -488,30 +547,40 @@ export function SetupView({
           </div>
 
           {/* Custom Focus Topics + Strict Bar-Raiser Toggle */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-[#16223b]">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-[#e4ddf5] dark:border-[#26193f]">
             <div className="space-y-2">
-              <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-300">
-                <Sparkles size={14} className="text-cyan-400" />
-                Specific Focus Topics (Optional)
+              <label
+                htmlFor="setup-focus-topics"
+                className="flex items-center gap-1.5 text-xs font-semibold text-[#362f47] dark:text-[#d8d0ea]"
+              >
+                <Sparkles
+                  size={14}
+                  className="text-purple-700 dark:text-purple-400"
+                />
+                <span>Specific Focus Topics (Optional)</span>
               </label>
               <input
+                id="setup-focus-topics"
                 type="text"
                 value={config.focusTopics || ''}
                 onChange={(e) =>
                   setConfig({ ...config, focusTopics: e.target.value })
                 }
                 placeholder="e.g. Microservices, React concurrency, SQL"
-                className="w-full bg-black border border-[#16223b] rounded-xl px-3.5 py-2.5 text-xs text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                className="w-full bg-white dark:bg-black border border-[#e4ddf5] dark:border-[#26193f] rounded-xl px-3.5 py-2.5 text-xs text-[#140f1f] dark:text-white focus:ring-2 focus:ring-violet-500 outline-none"
               />
             </div>
 
-            <div className="flex items-center justify-between rounded-xl bg-black border border-[#16223b] px-4 py-3">
+            <label className="flex items-center justify-between rounded-xl bg-white dark:bg-black border border-[#e4ddf5] dark:border-[#26193f] px-4 py-3 cursor-pointer">
               <div className="pr-3">
-                <div className="flex items-center gap-1.5 text-xs font-semibold text-white">
-                  <ShieldAlert size={14} className="text-blue-400" />
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-[#140f1f] dark:text-white">
+                  <ShieldAlert
+                    size={14}
+                    className="text-violet-700 dark:text-violet-400"
+                  />
                   <span>Principal Bar-Raiser Mode</span>
                 </div>
-                <div className="text-[11px] text-slate-400 mt-0.5">
+                <div className="text-[11px] text-[#5a5170] dark:text-[#a69cbe] mt-0.5">
                   Challenges vague answers with deep follow-ups
                 </div>
               </div>
@@ -521,9 +590,9 @@ export function SetupView({
                 onChange={(e) =>
                   setConfig({ ...config, strictMode: e.target.checked })
                 }
-                className="w-4 h-4 accent-blue-600 cursor-pointer shrink-0"
+                className="w-4 h-4 accent-violet-600 cursor-pointer shrink-0"
               />
-            </div>
+            </label>
           </div>
 
           {/* Launch Action */}
@@ -535,7 +604,7 @@ export function SetupView({
               className={`w-full py-4 px-6 rounded-xl font-bold text-base flex items-center justify-center gap-2 transition-all cursor-pointer ${
                 isFormValid && !parsing
                   ? 'amoled-btn-primary text-white'
-                  : 'bg-[#0a1120] text-slate-500 border border-[#16223b] cursor-not-allowed'
+                  : 'bg-[#f3effb] dark:bg-[#120b1f] text-[#5a5170] dark:text-[#a69cbe] border border-[#e4ddf5] dark:border-[#26193f] cursor-not-allowed'
               }`}
             >
               <span>

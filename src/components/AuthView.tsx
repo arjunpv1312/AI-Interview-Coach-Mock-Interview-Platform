@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User } from '../types';
+import { ColorMode, User } from '../types';
 import { Logo } from './Logo';
 import {
   authenticateVaultUser,
@@ -22,18 +22,24 @@ import {
   CheckCircle2,
   ArrowRight,
   Lock,
+  Sun,
+  Moon,
 } from 'lucide-react';
 
 interface AuthViewProps {
   onLogin: (user: User, rememberMe: boolean) => void;
   lockNotice?: string | null;
   onDismissLockNotice?: () => void;
+  colorMode: ColorMode;
+  onToggleColorMode: () => void;
 }
 
 export function AuthView({
   onLogin,
   lockNotice,
   onDismissLockNotice,
+  colorMode,
+  onToggleColorMode,
 }: AuthViewProps) {
   const [isLogin, setIsLogin] = useState(true);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
@@ -69,7 +75,7 @@ export function AuthView({
         const users = await getVaultUsers();
         if (users[trimmedEmail]) {
           setSuccess(
-            `Password reset instructions prepared for ${trimmedEmail}. Returning to sign in.`
+            `Account verified for ${trimmedEmail} inside your local AES-256-GCM vault. Returning to sign in.`
           );
           setTimeout(() => setIsForgotPassword(false), 2000);
         } else {
@@ -86,7 +92,8 @@ export function AuthView({
           joinDate: new Date().toISOString(),
           totalInterviews: 0,
           averageScore: 0,
-          themePreference: 'amoled',
+          themePreference: 'obsidian-violet',
+          colorMode,
           authProvider: 'email',
         };
         const resolved = await ensureFederatedOrDemoUser(
@@ -116,7 +123,8 @@ export function AuthView({
           joinDate: new Date().toISOString(),
           totalInterviews: 0,
           averageScore: 0,
-          themePreference: 'amoled',
+          themePreference: 'obsidian-violet',
+          colorMode,
           authProvider: 'email',
         };
         const reg = await registerVaultUser(newUser, password);
@@ -144,7 +152,8 @@ export function AuthView({
         joinDate: new Date().toISOString(),
         totalInterviews: 0,
         averageScore: 0,
-        themePreference: 'amoled',
+        themePreference: 'obsidian-violet',
+        colorMode,
         authProvider: 'guest',
       };
       const resolved = await ensureFederatedOrDemoUser(
@@ -174,7 +183,8 @@ export function AuthView({
         joinDate: new Date().toISOString(),
         totalInterviews: 0,
         averageScore: 0,
-        themePreference: 'amoled',
+        themePreference: 'obsidian-violet',
+        colorMode,
         authProvider: provider,
       };
       const resolved = await ensureFederatedOrDemoUser(
@@ -190,89 +200,114 @@ export function AuthView({
   };
 
   return (
-    <div className="min-h-screen bg-black text-slate-100 flex flex-col lg:flex-row relative overflow-hidden">
+    <div className="min-h-screen bg-white text-[#140f1f] dark:bg-black dark:text-[#f5f3ff] flex flex-col lg:flex-row relative overflow-hidden">
       <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute -top-40 -left-40 w-[520px] h-[520px] rounded-full bg-blue-600/15 blur-[140px]" />
-        <div className="absolute bottom-0 right-0 w-[480px] h-[480px] rounded-full bg-cyan-500/10 blur-[150px]" />
+        <div className="absolute -top-40 -left-40 w-[520px] h-[520px] rounded-full bg-violet-500/12 dark:bg-violet-600/16 blur-[140px]" />
+        <div className="absolute bottom-0 right-0 w-[480px] h-[480px] rounded-full bg-purple-400/10 dark:bg-purple-500/12 blur-[150px]" />
       </div>
 
       {/* Left Showcase Panel */}
-      <div className="hidden lg:flex lg:w-[52%] relative z-10 flex-col justify-between p-12 border-r border-[#16223b] bg-gradient-to-br from-[#020612] via-black to-black">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl border border-blue-500/30 overflow-hidden shrink-0">
-            <Logo />
+      <div className="hidden lg:flex lg:w-[52%] relative z-10 flex-col justify-between p-12 border-r border-[#e4ddf5] dark:border-[#26193f] bg-gradient-to-br from-[#faf8ff] via-white to-[#f5f3ff] dark:from-[#080412] dark:via-black dark:to-black">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl border border-violet-300 dark:border-violet-500/35 overflow-hidden shrink-0">
+              <Logo />
+            </div>
+            <span className="text-lg font-bold tracking-tight text-[#140f1f] dark:text-white">
+              Interview Copilot
+            </span>
           </div>
-          <span className="text-lg font-bold tracking-tight text-white">
-            Interview Copilot
-          </span>
+
+          <button
+            type="button"
+            onClick={onToggleColorMode}
+            aria-label={
+              colorMode === 'dark'
+                ? 'Switch to White Light Mode'
+                : 'Switch to Black Dark Mode'
+            }
+            className="px-3 py-1.5 rounded-lg border border-[#e4ddf5] dark:border-[#26193f] bg-white dark:bg-[#08050f] text-xs font-semibold text-[#362f47] dark:text-[#d8d0ea] hover:border-violet-500 flex items-center gap-1.5 cursor-pointer"
+          >
+            {colorMode === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+            <span>{colorMode === 'dark' ? 'White Mode' : 'Dark Mode'}</span>
+          </button>
         </div>
 
         <div className="max-w-xl space-y-8 my-auto py-8">
           <div className="space-y-4">
-            <p className="text-sm font-medium text-blue-400">
-              Zero-Knowledge Resume-Grounded AI Studio
+            <p className="text-sm font-semibold text-violet-700 dark:text-violet-400">
+              Zero-Knowledge Resume-Grounded Studio
             </p>
-            <h1 className="text-4xl xl:text-5xl font-extrabold tracking-tight text-white leading-[1.12] [text-wrap:balance]">
+            <h1 className="text-4xl xl:text-5xl font-extrabold tracking-tight text-[#140f1f] dark:text-white leading-[1.12] [text-wrap:balance]">
               Practice with questions pulled straight from your resume.
             </h1>
-            <p className="text-slate-400 text-base leading-relaxed">
+            <p className="text-[#5a5170] dark:text-[#a69cbe] text-base leading-relaxed">
               Upload your PDF, DOCX, or TXT resume with zero server retention.
               All profile records, resumes, and interview transcripts stay
               AES-256-GCM encrypted locally inside your browser vault.
             </p>
           </div>
 
-          <div className="rounded-2xl border border-blue-500/20 bg-[#050912] p-6 space-y-5 shadow-2xl shadow-blue-950/30">
-            <div className="flex items-center justify-between border-b border-[#16223b] pb-4">
+          <div className="rounded-2xl border border-[#e4ddf5] dark:border-violet-500/25 bg-white dark:bg-[#08050f] p-6 space-y-5 shadow-xl shadow-violet-500/5 dark:shadow-violet-950/30">
+            <div className="flex items-center justify-between border-b border-[#e4ddf5] dark:border-[#26193f] pb-4">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-blue-600/15 border border-blue-500/30 flex items-center justify-center text-blue-400">
+                <div className="w-9 h-9 rounded-lg bg-violet-100 dark:bg-violet-600/20 border border-violet-300 dark:border-violet-500/35 flex items-center justify-center text-violet-700 dark:text-violet-400">
                   <Mic size={18} />
                 </div>
                 <div>
-                  <div className="text-sm font-semibold text-white">
+                  <div className="text-sm font-semibold text-[#140f1f] dark:text-white">
                     Live Resume Probe
                   </div>
-                  <div className="text-xs text-slate-400">
+                  <div className="text-xs text-[#5a5170] dark:text-[#a69cbe]">
                     System Design · Hard Difficulty
                   </div>
                 </div>
               </div>
-              <span className="text-xs font-mono text-cyan-400 tabular-nums">
+              <span className="text-xs font-mono text-purple-700 dark:text-purple-400 tabular-nums">
                 Turn 01 / 28:40
               </span>
             </div>
 
             <div className="space-y-3 text-sm">
-              <div className="rounded-xl bg-[#0a1120] border border-[#16223b] p-3.5 text-slate-200 leading-relaxed">
+              <div className="rounded-xl bg-[#faf8ff] dark:bg-[#120b1f] border border-[#e4ddf5] dark:border-[#26193f] p-3.5 text-[#140f1f] dark:text-[#e9e4f5] leading-relaxed">
                 “I noticed on your resume you scaled a Redis caching layer to cut
                 checkout latency by 42%. How did you prevent cache stampedes
                 during peak flash sales?”
               </div>
               <div className="grid grid-cols-3 gap-3 pt-1">
-                <div className="rounded-xl bg-black border border-[#16223b] p-3">
-                  <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
-                    <FileText size={13} className="text-blue-400" />
+                <div className="rounded-xl bg-[#faf8ff] dark:bg-black border border-[#e4ddf5] dark:border-[#26193f] p-3">
+                  <div className="flex items-center gap-1.5 text-xs text-[#5a5170] dark:text-[#a69cbe] mb-1">
+                    <FileText
+                      size={13}
+                      className="text-violet-700 dark:text-violet-400"
+                    />
                     <span>Resume Hook</span>
                   </div>
-                  <div className="text-sm font-semibold text-white tabular-nums">
+                  <div className="text-sm font-semibold text-[#140f1f] dark:text-white tabular-nums">
                     94% Match
                   </div>
                 </div>
-                <div className="rounded-xl bg-black border border-[#16223b] p-3">
-                  <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
-                    <BarChart3 size={13} className="text-cyan-400" />
+                <div className="rounded-xl bg-[#faf8ff] dark:bg-black border border-[#e4ddf5] dark:border-[#26193f] p-3">
+                  <div className="flex items-center gap-1.5 text-xs text-[#5a5170] dark:text-[#a69cbe] mb-1">
+                    <BarChart3
+                      size={13}
+                      className="text-purple-700 dark:text-purple-400"
+                    />
                     <span>Depth Score</span>
                   </div>
-                  <div className="text-sm font-semibold text-white tabular-nums">
+                  <div className="text-sm font-semibold text-[#140f1f] dark:text-white tabular-nums">
                     88 / 100
                   </div>
                 </div>
-                <div className="rounded-xl bg-black border border-[#16223b] p-3">
-                  <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
-                    <ShieldCheck size={13} className="text-emerald-400" />
+                <div className="rounded-xl bg-[#faf8ff] dark:bg-black border border-[#e4ddf5] dark:border-[#26193f] p-3">
+                  <div className="flex items-center gap-1.5 text-xs text-[#5a5170] dark:text-[#a69cbe] mb-1">
+                    <ShieldCheck
+                      size={13}
+                      className="text-emerald-600 dark:text-emerald-400"
+                    />
                     <span>Vault Cipher</span>
                   </div>
-                  <div className="text-sm font-semibold text-emerald-400">
+                  <div className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
                     AES-256-GCM
                   </div>
                 </div>
@@ -280,45 +315,65 @@ export function AuthView({
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-4 text-xs text-slate-400">
+          <div className="grid grid-cols-3 gap-4 text-xs text-[#5a5170] dark:text-[#a69cbe]">
             <div className="flex items-center gap-2">
-              <CheckCircle2 size={15} className="text-blue-400 shrink-0" />
+              <CheckCircle2
+                size={15}
+                className="text-violet-700 dark:text-violet-400 shrink-0"
+              />
               <span>AES-256-GCM Vault</span>
             </div>
             <div className="flex items-center gap-2">
-              <CheckCircle2 size={15} className="text-blue-400 shrink-0" />
+              <CheckCircle2
+                size={15}
+                className="text-violet-700 dark:text-violet-400 shrink-0"
+              />
               <span>PBKDF2-SHA-256 Auth</span>
             </div>
             <div className="flex items-center gap-2">
-              <CheckCircle2 size={15} className="text-blue-400 shrink-0" />
+              <CheckCircle2
+                size={15}
+                className="text-violet-700 dark:text-violet-400 shrink-0"
+              />
               <span>Zero Server Retention</span>
             </div>
           </div>
         </div>
 
-        <div className="text-xs text-slate-500 flex items-center gap-2">
-          <Lock size={12} className="text-blue-400" />
+        <div className="text-xs text-[#5a5170] dark:text-[#a69cbe] flex items-center gap-2">
+          <Lock size={12} className="text-violet-700 dark:text-violet-400" />
           <span>End-to-End Encrypted Local Vault</span>
           <span aria-hidden="true">·</span>
-          <span>AMOLED Edition</span>
+          <span>15m Inactivity Auto-Lock</span>
         </div>
       </div>
 
       {/* Right Auth Form Column */}
       <div className="flex-1 relative z-10 flex items-center justify-center p-6 sm:p-10">
-        <div className="w-full max-w-md space-y-6 bg-[#050912]/90 border border-[#16223b] rounded-2xl p-7 sm:p-8 shadow-2xl">
-          <div className="flex flex-col items-center lg:items-start space-y-2">
-            <div className="lg:hidden w-14 h-14 rounded-xl border border-blue-500/30 overflow-hidden mb-2">
+        <div className="w-full max-w-md space-y-6 bg-[#faf8ff] dark:bg-[#08050f]/95 border border-[#e4ddf5] dark:border-[#26193f] rounded-2xl p-7 sm:p-8 shadow-2xl">
+          <div className="flex items-center justify-between lg:hidden mb-2">
+            <div className="w-12 h-12 rounded-xl border border-violet-300 dark:border-violet-500/35 overflow-hidden">
               <Logo />
             </div>
-            <h2 className="text-2xl font-bold tracking-tight text-white">
+            <button
+              type="button"
+              onClick={onToggleColorMode}
+              className="px-3 py-1.5 rounded-lg border border-[#e4ddf5] dark:border-[#26193f] bg-white dark:bg-black text-xs font-semibold text-[#362f47] dark:text-[#d8d0ea] flex items-center gap-1.5 cursor-pointer"
+            >
+              {colorMode === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+              <span>{colorMode === 'dark' ? 'White Mode' : 'Dark Mode'}</span>
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            <h2 className="text-2xl font-bold tracking-tight text-[#140f1f] dark:text-white">
               {isForgotPassword
                 ? 'Reset your password'
                 : isLogin
                   ? 'Sign in to your encrypted studio'
                   : 'Create your encrypted account'}
             </h2>
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-[#5a5170] dark:text-[#a69cbe]">
               {isForgotPassword
                 ? 'Verify your account email inside the local vault.'
                 : isLogin
@@ -328,16 +383,22 @@ export function AuthView({
           </div>
 
           {lockNotice && (
-            <div className="p-3.5 rounded-xl bg-blue-600/10 border border-blue-500/40 text-blue-200 text-xs flex items-start justify-between gap-3">
+            <div
+              role="status"
+              className="p-3.5 rounded-xl bg-violet-600/10 border border-violet-500/40 text-violet-900 dark:text-violet-200 text-xs flex items-start justify-between gap-3"
+            >
               <div className="flex items-start gap-2.5">
-                <Lock size={15} className="text-blue-400 shrink-0 mt-0.5" />
+                <Lock
+                  size={15}
+                  className="text-violet-700 dark:text-violet-400 shrink-0 mt-0.5"
+                />
                 <span className="leading-relaxed">{lockNotice}</span>
               </div>
               {onDismissLockNotice && (
                 <button
                   type="button"
                   onClick={onDismissLockNotice}
-                  className="text-slate-400 hover:text-white text-xs font-semibold shrink-0 cursor-pointer"
+                  className="text-[#5a5170] dark:text-[#a69cbe] hover:text-[#140f1f] dark:hover:text-white text-xs font-semibold shrink-0 cursor-pointer"
                 >
                   Dismiss
                 </button>
@@ -372,29 +433,17 @@ export function AuthView({
                   type="button"
                   onClick={() => handleFederatedQuickConnect('google')}
                   disabled={loadingAction !== null}
-                  className="py-2.5 px-3 rounded-xl bg-[#0a1120] hover:bg-[#101b33] border border-[#16223b] hover:border-blue-500/40 text-slate-200 text-xs font-semibold flex items-center justify-center gap-2 transition-all disabled:opacity-60 cursor-pointer"
+                  className="py-2.5 px-3 rounded-xl bg-white dark:bg-[#120b1f] hover:bg-[#f3effb] dark:hover:bg-[#1b112e] border border-[#e4ddf5] dark:border-[#26193f] hover:border-violet-500/50 text-[#140f1f] dark:text-[#e9e4f5] text-xs font-semibold flex items-center justify-center gap-2 transition-all disabled:opacity-60 cursor-pointer"
                 >
                   {loadingAction === 'google' ? (
-                    <Loader2 size={15} className="animate-spin text-blue-400" />
+                    <Loader2
+                      size={15}
+                      className="animate-spin text-violet-600 dark:text-violet-400"
+                    />
                   ) : (
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" aria-hidden="true">
-                      <path
-                        fill="#4285F4"
-                        d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17Z"
-                      />
-                      <path
-                        fill="#34A853"
-                        d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.11-6.72-4.96H1.29v3.14C3.26 21.3 7.31 24 12 24Z"
-                      />
-                      <path
-                        fill="#FBBC05"
-                        d="M5.28 14.24c-.24-.72-.38-1.49-.38-2.24s.14-1.52.38-2.24V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.99-3.14Z"
-                      />
-                      <path
-                        fill="#EA4335"
-                        d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.99 3.14c.95-2.85 3.6-4.96 6.72-4.96Z"
-                      />
-                    </svg>
+                    <span className="w-4 h-4 rounded-full bg-violet-700 dark:bg-violet-500 text-white text-[10px] font-bold flex items-center justify-center">
+                      G
+                    </span>
                   )}
                   <span>Google</span>
                 </button>
@@ -403,13 +452,16 @@ export function AuthView({
                   type="button"
                   onClick={() => handleFederatedQuickConnect('github')}
                   disabled={loadingAction !== null}
-                  className="py-2.5 px-3 rounded-xl bg-[#0a1120] hover:bg-[#101b33] border border-[#16223b] hover:border-blue-500/40 text-slate-200 text-xs font-semibold flex items-center justify-center gap-2 transition-all disabled:opacity-60 cursor-pointer"
+                  className="py-2.5 px-3 rounded-xl bg-white dark:bg-[#120b1f] hover:bg-[#f3effb] dark:hover:bg-[#1b112e] border border-[#e4ddf5] dark:border-[#26193f] hover:border-violet-500/50 text-[#140f1f] dark:text-[#e9e4f5] text-xs font-semibold flex items-center justify-center gap-2 transition-all disabled:opacity-60 cursor-pointer"
                 >
                   {loadingAction === 'github' ? (
-                    <Loader2 size={15} className="animate-spin text-blue-400" />
+                    <Loader2
+                      size={15}
+                      className="animate-spin text-violet-600 dark:text-violet-400"
+                    />
                   ) : (
                     <svg
-                      className="w-4 h-4 fill-current text-white"
+                      className="w-4 h-4 fill-current text-[#140f1f] dark:text-white"
                       viewBox="0 0 24 24"
                       aria-hidden="true"
                     >
@@ -421,56 +473,72 @@ export function AuthView({
               </div>
 
               <div className="relative flex py-2 items-center">
-                <div className="flex-grow border-t border-[#16223b]" />
-                <span className="flex-shrink mx-3 text-xs text-slate-500">
+                <div className="flex-grow border-t border-[#e4ddf5] dark:border-[#26193f]" />
+                <span className="flex-shrink mx-3 text-xs text-[#5a5170] dark:text-[#a69cbe]">
                   or continue with email
                 </span>
-                <div className="flex-grow border-t border-[#16223b]" />
+                <div className="flex-grow border-t border-[#e4ddf5] dark:border-[#26193f]" />
               </div>
             </div>
           )}
 
-          {error && (
-            <div className="p-3.5 bg-rose-500/10 border border-rose-500/40 rounded-xl flex items-center gap-2.5 text-rose-300 text-xs font-medium">
-              <AlertCircle size={16} className="shrink-0" />
-              <p>{error}</p>
-            </div>
-          )}
+          <div aria-live="polite" className="space-y-3">
+            {error && (
+              <div
+                role="alert"
+                className="p-3.5 bg-rose-500/10 border border-rose-500/40 rounded-xl flex items-center gap-2.5 text-rose-700 dark:text-rose-300 text-xs font-medium"
+              >
+                <AlertCircle size={16} className="shrink-0" />
+                <p>{error}</p>
+              </div>
+            )}
 
-          {success && (
-            <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/40 rounded-xl flex items-center gap-2.5 text-emerald-300 text-xs font-medium">
-              <CheckCircle2 size={16} className="shrink-0" />
-              <p>{success}</p>
-            </div>
-          )}
+            {success && (
+              <div
+                role="status"
+                className="p-3.5 bg-emerald-500/10 border border-emerald-500/40 rounded-xl flex items-center gap-2.5 text-emerald-700 dark:text-emerald-300 text-xs font-medium"
+              >
+                <CheckCircle2 size={16} className="shrink-0" />
+                <p>{success}</p>
+              </div>
+            )}
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {!isLogin && !isForgotPassword && (
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                <label
+                  htmlFor="auth-fullname"
+                  className="block text-xs font-medium text-[#362f47] dark:text-[#d8d0ea] mb-1.5"
+                >
                   Full Name
                 </label>
                 <input
+                  id="auth-fullname"
                   type="text"
                   required
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="w-full bg-black border border-[#16223b] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  className="w-full bg-white dark:bg-black border border-[#e4ddf5] dark:border-[#26193f] rounded-xl px-4 py-3 text-sm text-[#140f1f] dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500 transition-all"
                   placeholder="Arjun PV"
                 />
               </div>
             )}
 
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1.5">
+              <label
+                htmlFor="auth-email"
+                className="block text-xs font-medium text-[#362f47] dark:text-[#d8d0ea] mb-1.5"
+              >
                 Email Address
               </label>
               <input
+                id="auth-email"
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-black border border-[#16223b] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                className="w-full bg-white dark:bg-black border border-[#e4ddf5] dark:border-[#26193f] rounded-xl px-4 py-3 text-sm text-[#140f1f] dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500 transition-all"
                 placeholder="you@domain.com"
               />
             </div>
@@ -478,7 +546,10 @@ export function AuthView({
             {!isForgotPassword && !(passwordlessDemo && isLogin) && (
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <label className="block text-xs font-medium text-slate-300">
+                  <label
+                    htmlFor="auth-password"
+                    className="block text-xs font-medium text-[#362f47] dark:text-[#d8d0ea]"
+                  >
                     Password
                   </label>
                   {isLogin && (
@@ -488,7 +559,7 @@ export function AuthView({
                         setIsForgotPassword(true);
                         setError('');
                       }}
-                      className="text-xs text-blue-400 hover:text-blue-300 transition-colors cursor-pointer"
+                      className="text-xs text-violet-700 dark:text-violet-400 hover:text-violet-600 dark:hover:text-violet-300 transition-colors cursor-pointer"
                     >
                       Forgot password?
                     </button>
@@ -496,19 +567,20 @@ export function AuthView({
                 </div>
                 <div className="relative">
                   <input
+                    id="auth-password"
                     type={showPassword ? 'text' : 'password'}
                     required={!passwordlessDemo}
                     minLength={6}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-black border border-[#16223b] rounded-xl px-4 py-3 pr-11 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    className="w-full bg-white dark:bg-black border border-[#e4ddf5] dark:border-[#26193f] rounded-xl px-4 py-3 pr-11 text-sm text-[#140f1f] dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500 transition-all"
                     placeholder="••••••••"
                   />
                   <button
                     type="button"
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#5a5170] dark:text-[#a69cbe] hover:text-[#140f1f] dark:hover:text-white cursor-pointer"
                   >
                     {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
                   </button>
@@ -518,17 +590,21 @@ export function AuthView({
 
             {!isLogin && !isForgotPassword && (
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                <label
+                  htmlFor="auth-confirm-password"
+                  className="block text-xs font-medium text-[#362f47] dark:text-[#d8d0ea] mb-1.5"
+                >
                   Confirm Password
                 </label>
                 <div className="relative">
                   <input
+                    id="auth-confirm-password"
                     type={showConfirmPassword ? 'text' : 'password'}
                     required
                     minLength={6}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full bg-black border border-[#16223b] rounded-xl px-4 py-3 pr-11 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    className="w-full bg-white dark:bg-black border border-[#e4ddf5] dark:border-[#26193f] rounded-xl px-4 py-3 pr-11 text-sm text-[#140f1f] dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500 transition-all"
                     placeholder="••••••••"
                   />
                   <button
@@ -539,7 +615,7 @@ export function AuthView({
                         : 'Show confirm password'
                     }
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#5a5170] dark:text-[#a69cbe] hover:text-[#140f1f] dark:hover:text-white cursor-pointer"
                   >
                     {showConfirmPassword ? (
                       <EyeOff size={17} />
@@ -553,12 +629,12 @@ export function AuthView({
 
             {!isForgotPassword && (
               <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs">
-                <label className="flex items-center gap-2 text-slate-400 cursor-pointer select-none">
+                <label className="flex items-center gap-2 text-[#5a5170] dark:text-[#a69cbe] cursor-pointer select-none">
                   <input
                     type="checkbox"
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
-                    className="w-4 h-4 rounded border-[#16223b] bg-black accent-blue-600 cursor-pointer"
+                    className="w-4 h-4 rounded border-[#e4ddf5] dark:border-[#26193f] bg-white dark:bg-black accent-violet-600 cursor-pointer"
                   />
                   <span>Remember encrypted session (7d)</span>
                 </label>
@@ -566,11 +642,12 @@ export function AuthView({
                 {isLogin && (
                   <button
                     type="button"
+                    aria-pressed={passwordlessDemo}
                     onClick={() => setPasswordlessDemo(!passwordlessDemo)}
                     className={`px-2.5 py-1 rounded-lg border text-xs font-medium transition-colors cursor-pointer ${
                       passwordlessDemo
-                        ? 'bg-blue-600/20 border-blue-500/50 text-blue-300'
-                        : 'bg-black border-[#16223b] text-slate-400 hover:text-white'
+                        ? 'bg-violet-600/15 border-violet-500/50 text-violet-700 dark:text-violet-300'
+                        : 'bg-white dark:bg-black border-[#e4ddf5] dark:border-[#26193f] text-[#5a5170] dark:text-[#a69cbe] hover:text-[#140f1f] dark:hover:text-white'
                     }`}
                   >
                     {passwordlessDemo
@@ -584,7 +661,7 @@ export function AuthView({
             <button
               type="submit"
               disabled={loadingAction !== null}
-              className="w-full bg-[#0a1120] hover:bg-blue-600 border border-blue-500/40 text-white font-semibold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-all disabled:opacity-60 cursor-pointer"
+              className="w-full bg-[#140f1f] dark:bg-[#120b1f] hover:bg-violet-700 dark:hover:bg-violet-600 border border-violet-500/40 text-white font-semibold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-all disabled:opacity-60 cursor-pointer"
             >
               {loadingAction === 'submit' ? (
                 <>
@@ -615,7 +692,7 @@ export function AuthView({
             </button>
           </form>
 
-          <div className="pt-2 text-center border-t border-[#16223b]">
+          <div className="pt-2 text-center border-t border-[#e4ddf5] dark:border-[#26193f]">
             <button
               type="button"
               onClick={() => {
@@ -629,7 +706,7 @@ export function AuthView({
                   setConfirmPassword('');
                 }
               }}
-              className="text-xs font-medium text-slate-400 hover:text-blue-400 transition-colors cursor-pointer pt-2"
+              className="text-xs font-medium text-[#5a5170] dark:text-[#a69cbe] hover:text-violet-700 dark:hover:text-violet-400 transition-colors cursor-pointer pt-2"
             >
               {isForgotPassword
                 ? 'Back to Sign In'

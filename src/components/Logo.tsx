@@ -1,29 +1,52 @@
 import React from 'react';
-import { Terminal, Cpu } from 'lucide-react';
 
 export function Logo({ className = 'w-full h-full' }: { className?: string }) {
   return (
     <div
-      className={`relative flex items-center justify-center bg-black overflow-hidden rounded-inherit ${className}`}
+      className={`relative flex items-center justify-center bg-[#faf8ff] dark:bg-black overflow-hidden ${className}`}
+      aria-hidden="true"
     >
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-600/30 via-black to-cyan-500/20" />
-      <div
-        className="absolute inset-0 opacity-20"
-        style={{
-          backgroundImage:
-            'radial-gradient(rgba(59,130,246,0.35) 1px, transparent 1px)',
-          backgroundSize: '10px 10px',
-        }}
-      />
-      <div className="relative z-10 flex items-center justify-center w-full h-full">
-        <Cpu className="text-blue-400 w-[56%] h-[56%]" strokeWidth={1.75} />
-        <Terminal
-          className="absolute text-cyan-300/80 w-[28%] h-[28%] right-[14%] bottom-[14%]"
-          strokeWidth={2}
+      <svg
+        viewBox="0 0 40 40"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        className="w-[74%] h-[74%]"
+      >
+        <defs>
+          <linearGradient id="icMonogramGrad" x1="4" y1="4" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stopColor="#8b5cf6" />
+            <stop offset="100%" stopColor="#c084fc" />
+          </linearGradient>
+        </defs>
+        <rect
+          x="3"
+          y="3"
+          width="34"
+          height="34"
+          rx="8"
+          stroke="url(#icMonogramGrad)"
+          strokeWidth="2.2"
         />
-      </div>
-      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-blue-400/70 to-transparent" />
-      <div className="absolute inset-x-0 bottom-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-400/40 to-transparent" />
+        <path
+          d="M13 13V27"
+          stroke="currentColor"
+          className="text-[#140f1f] dark:text-white"
+          strokeWidth="2.6"
+          strokeLinecap="round"
+        />
+        <path
+          d="M27 14.5C25.5 13 23.4 12.2 21.2 12.5C18.1 12.9 16 15.6 16 20C16 24.4 18.1 27.1 21.2 27.5C23.4 27.8 25.5 27 27 25.5"
+          stroke="url(#icMonogramGrad)"
+          strokeWidth="2.6"
+          strokeLinecap="round"
+        />
+        <path
+          d="M21.5 18V22M24.5 16.5V23.5"
+          stroke="#a855f7"
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
+      </svg>
     </div>
   );
 }

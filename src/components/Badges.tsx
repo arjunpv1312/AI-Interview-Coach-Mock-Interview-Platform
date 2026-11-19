@@ -1,6 +1,13 @@
 import React from 'react';
 import { User } from '../types';
-import { Award, Star, Flame, Trophy, TrendingUp, CheckCircle2 } from 'lucide-react';
+import {
+  Award,
+  Star,
+  Flame,
+  Trophy,
+  TrendingUp,
+  CheckCircle2,
+} from 'lucide-react';
 
 interface BadgesProps {
   user: User;
@@ -22,7 +29,7 @@ export function Badges({ user, onNavigate }: BadgesProps) {
   const badges = [
     {
       id: 'first-interview',
-      title: 'First Step',
+      title: 'First Benchmark',
       description: 'Complete your first interview session',
       icon: Star,
       active: user.totalInterviews > 0,
@@ -30,7 +37,7 @@ export function Badges({ user, onNavigate }: BadgesProps) {
     },
     {
       id: 'ten-sessions',
-      title: 'Interview Veteran',
+      title: 'Ten Rounds',
       description: 'Complete 10 interview sessions',
       icon: Award,
       active: user.totalInterviews >= 10,
@@ -41,23 +48,23 @@ export function Badges({ user, onNavigate }: BadgesProps) {
     },
     {
       id: 'seven-day-streak',
-      title: '7-Day Streak',
-      description: 'Practice across 7 sessions or days',
+      title: '7-Session Cadence',
+      description: 'Practice across 7 consecutive sessions',
       icon: Flame,
       active: streak >= 7,
       statusText: streak >= 7 ? 'Unlocked' : `${streak}/7`,
     },
     {
       id: 'improvement-streak',
-      title: 'Trending Up',
-      description: 'Beat your previous session score',
+      title: 'Upward Trajectory',
+      description: 'Surpass your previous session score',
       icon: TrendingUp,
       active: hasImprovementStreak,
       statusText: hasImprovementStreak ? 'Unlocked' : 'Pending',
     },
     {
       id: 'top-performer',
-      title: 'Top Performer',
+      title: 'Top Percentile',
       description: 'Achieve a score of 90+ in a round',
       icon: Trophy,
       active: isTopPerformer,
@@ -72,14 +79,14 @@ export function Badges({ user, onNavigate }: BadgesProps) {
     <div className="amoled-surface rounded-2xl p-6 w-full">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-blue-600/15 border border-blue-500/30 rounded-xl text-blue-400">
+          <div className="p-2 bg-violet-100 dark:bg-violet-600/20 border border-violet-300 dark:border-violet-500/35 rounded-xl text-violet-700 dark:text-violet-400">
             <Award size={18} />
           </div>
           <div>
-            <h2 className="text-base font-bold text-white">
-              Milestones & Badges
+            <h2 className="text-base font-bold text-[#140f1f] dark:text-white">
+              Milestones &amp; Credentials
             </h2>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-[#5a5170] dark:text-[#a69cbe]">
               Earned automatically from your encrypted interview history
             </p>
           </div>
@@ -88,11 +95,13 @@ export function Badges({ user, onNavigate }: BadgesProps) {
         <button
           type="button"
           onClick={() => onNavigate('certificate')}
-          className="flex items-center gap-2 bg-black hover:bg-[#0a1120] text-blue-300 border border-blue-500/40 px-4 py-2 rounded-xl text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap self-start sm:self-auto"
+          className="flex items-center gap-2 bg-white dark:bg-black hover:bg-[#f3effb] dark:hover:bg-[#120b1f] text-violet-700 dark:text-violet-300 border border-violet-400/50 px-4 py-2 rounded-xl text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap self-start sm:self-auto"
         >
           <Award size={15} />
           <span>
-            {hasCertificate ? 'View Unlocked Certificates' : 'Certificate Milestones'}
+            {hasCertificate
+              ? 'View Unlocked Certificates'
+              : 'Certificate Milestones'}
           </span>
         </button>
       </div>
@@ -105,23 +114,25 @@ export function Badges({ user, onNavigate }: BadgesProps) {
               key={badge.id}
               className={`flex flex-col gap-3 p-4 rounded-xl border transition-colors ${
                 badge.active
-                  ? 'bg-black border-blue-500/40'
-                  : 'bg-black/60 border-[#16223b]'
+                  ? 'bg-white dark:bg-black border-violet-500/45'
+                  : 'bg-[#faf8ff] dark:bg-black/60 border-[#e4ddf5] dark:border-[#26193f]'
               }`}
             >
               <div className="flex items-center justify-between">
                 <div
                   className={`p-2.5 rounded-xl border ${
                     badge.active
-                      ? 'bg-blue-600/15 border-blue-500/30 text-blue-400'
-                      : 'bg-[#050912] border-[#16223b] text-slate-500'
+                      ? 'bg-violet-100 dark:bg-violet-600/20 border-violet-300 dark:border-violet-500/35 text-violet-700 dark:text-violet-400'
+                      : 'bg-white dark:bg-[#08050f] border-[#e4ddf5] dark:border-[#26193f] text-[#5a5170] dark:text-[#a69cbe]'
                   }`}
                 >
                   <Icon size={18} />
                 </div>
                 <span
                   className={`text-xs font-mono tabular-nums flex items-center gap-1 ${
-                    badge.active ? 'text-cyan-400 font-semibold' : 'text-slate-500'
+                    badge.active
+                      ? 'text-purple-700 dark:text-purple-400 font-semibold'
+                      : 'text-[#5a5170] dark:text-[#a69cbe]'
                   }`}
                 >
                   {badge.active && <CheckCircle2 size={12} />}
@@ -132,12 +143,14 @@ export function Badges({ user, onNavigate }: BadgesProps) {
               <div>
                 <h3
                   className={`text-sm font-bold ${
-                    badge.active ? 'text-white' : 'text-slate-300'
+                    badge.active
+                      ? 'text-[#140f1f] dark:text-white'
+                      : 'text-[#362f47] dark:text-[#d8d0ea]'
                   }`}
                 >
                   {badge.title}
                 </h3>
-                <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                <p className="text-xs text-[#5a5170] dark:text-[#a69cbe] mt-1 leading-relaxed">
                   {badge.description}
                 </p>
               </div>

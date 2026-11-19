@@ -21,6 +21,7 @@ import {
   SlidersHorizontal,
   UserCheck,
   X,
+  Loader2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import maleInterviewerImg from '../assets/images/interviewer_male_1794822328504.jpg';
@@ -59,7 +60,7 @@ export function LiveInterviewView({
   const [webcamError, setWebcamError] = useState(false);
   const [webcamErrorMessage, setWebcamErrorMessage] = useState('');
 
-  // Ultra-Pro Studio Multi-Toggles
+  // Session Control Toggles
   const [isMicOn, setIsMicOn] = useState(true);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
   const [autoSubmitEnabled, setAutoSubmitEnabled] = useState(true);
@@ -149,14 +150,28 @@ export function LiveInterviewView({
 
     if (gender === 'male') {
       return (
-        findVoice(['Guy', 'David', 'Mark', 'Daniel', 'Alex', 'Google UK English Male']) ||
+        findVoice([
+          'Guy',
+          'David',
+          'Mark',
+          'Daniel',
+          'Alex',
+          'Google UK English Male',
+        ]) ||
         voices.find((v) => v.lang.startsWith('en-US')) ||
         voices[0]
       );
     }
 
     return (
-      findVoice(['Aria', 'Jenny', 'Samantha', 'Google US English', 'Google UK English Female', 'Zira']) ||
+      findVoice([
+        'Aria',
+        'Jenny',
+        'Samantha',
+        'Google US English',
+        'Google UK English Female',
+        'Zira',
+      ]) ||
       voices.find((v) => v.lang.startsWith('en-US')) ||
       voices.find((v) => v.lang.startsWith('en')) ||
       voices[0]
@@ -290,12 +305,15 @@ export function LiveInterviewView({
       }
     };
     loadVoices();
-    if ('speechSynthesis' in window && speechSynthesis.onvoiceschanged !== undefined) {
+    if (
+      'speechSynthesis' in window &&
+      speechSynthesis.onvoiceschanged !== undefined
+    ) {
       speechSynthesis.onvoiceschanged = loadVoices;
     }
   }, []);
 
-  // Audio Visualizer
+  // Audio Visualizer (Violet stroke, zero blue/cyan)
   useEffect(() => {
     let stream: MediaStream | null = null;
     let audioContext: AudioContext | null = null;
@@ -354,7 +372,7 @@ export function LiveInterviewView({
 
           canvasCtx.clearRect(0, 0, WIDTH, HEIGHT);
           canvasCtx.lineWidth = 2;
-          canvasCtx.strokeStyle = '#38bdf8';
+          canvasCtx.strokeStyle = '#a855f7';
           canvasCtx.beginPath();
 
           const sliceWidth = (WIDTH * 1.0) / bufferLength;
@@ -468,7 +486,9 @@ export function LiveInterviewView({
         } else {
           const aiMessage = {
             role: 'interviewer' as const,
-            text: data.text || 'Let us begin. Could you walk me through your background?',
+            text:
+              data.text ||
+              'Let us begin. Could you walk me through your background?',
           };
           setHistory((prev) => [...prev, aiMessage]);
         }
@@ -478,7 +498,9 @@ export function LiveInterviewView({
         if (!mounted) return;
         console.warn('Initial prompt fetch retry exhausted:', err?.message || err);
         setIsThinking(false);
-        setErrorToast('Connection interrupted. Click "Request Hint" or type a response to continue.');
+        setErrorToast(
+          'Connection interrupted. Click "Request Hint" or type a response to continue.'
+        );
         setTimeout(() => setErrorToast(''), 6000);
       }
     };
@@ -551,12 +573,22 @@ export function LiveInterviewView({
     answerTextRef.current = answerText;
   }, [answerText]);
 
-  // Silence detection for auto-submit (respects autoSubmitEnabled toggle)
+  // Silence detection for auto-submit
   useEffect(() => {
-    if (autoSubmitEnabled && isMicOn && answerText.trim() && !isThinking) {
+    if (
+      autoSubmitEnabled &&
+      isMicOn &&
+      answerText.trim() &&
+      !isThinking &&
+      !isSpeaking
+    ) {
       if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
       silenceTimerRef.current = setTimeout(() => {
-        if (!isThinkingRef.current && answerTextRef.current.trim().length > 5) {
+        if (
+          !isThinkingRef.current &&
+          !isSpeakingRef.current &&
+          answerTextRef.current.trim().length > 5
+        ) {
           handleSubmit();
         }
       }, 5000);
@@ -564,7 +596,7 @@ export function LiveInterviewView({
     return () => {
       if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
     };
-  }, [answerText, isMicOn, isThinking, autoSubmitEnabled]);
+  }, [answerText, isMicOn, isThinking, isSpeaking, autoSubmitEnabled]);
 
   useEffect(() => {
     const SpeechRecognition =
@@ -661,6 +693,11 @@ export function LiveInterviewView({
   };
 
   const submitCandidateInteraction = async (textOverride?: string) => {
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = null;
+    }
+
     const finalAnswer = textOverride || answerText;
     if (!finalAnswer.trim()) return;
 
@@ -710,7 +747,9 @@ export function LiveInterviewView({
       setAnswerText(finalAnswer);
       persistedTranscriptRef.current = finalAnswer;
       setIsThinking(false);
-      setErrorToast('Temporary network interruption. Your answer is preserved—please click Send Response.');
+      setErrorToast(
+        'Temporary network interruption. Your answer is preserved—please click Send Response.'
+      );
       setTimeout(() => setErrorToast(''), 6000);
     }
   };
@@ -745,21 +784,24 @@ export function LiveInterviewView({
       {/* Top Studio Header Bar */}
       <div className="amoled-surface rounded-2xl p-4 sm:px-6 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="w-11 h-11 rounded-xl bg-blue-600/15 border border-blue-500/30 flex items-center justify-center shrink-0">
-            <Building2 className="text-blue-400" size={22} />
+          <div className="w-11 h-11 rounded-xl bg-violet-100 dark:bg-violet-600/20 border border-violet-300 dark:border-violet-500/35 flex items-center justify-center shrink-0">
+            <Building2
+              className="text-violet-700 dark:text-violet-400"
+              size={22}
+            />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-white tracking-tight">
+            <h2 className="text-lg font-bold text-[#140f1f] dark:text-white tracking-tight">
               {config.company} · {config.role}
             </h2>
-            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400 mt-0.5">
+            <div className="flex flex-wrap items-center gap-2 text-xs text-[#5a5170] dark:text-[#a69cbe] mt-0.5">
               <span>{config.type}</span>
               <span aria-hidden="true">·</span>
               <span>{config.difficulty}</span>
               {resume && (
                 <>
                   <span aria-hidden="true">·</span>
-                  <span className="text-cyan-400 font-medium">
+                  <span className="text-purple-700 dark:text-purple-400 font-medium">
                     Resume Active ({resume.fileName})
                   </span>
                 </>
@@ -769,11 +811,16 @@ export function LiveInterviewView({
         </div>
 
         <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto justify-between lg:justify-end">
-          <div className="flex items-center gap-2 bg-black px-3.5 py-2 rounded-xl border border-[#16223b]">
-            <Clock size={15} className="text-blue-400" />
+          <div className="flex items-center gap-2 bg-white dark:bg-black px-3.5 py-2 rounded-xl border border-[#e4ddf5] dark:border-[#26193f]">
+            <Clock
+              size={15}
+              className="text-violet-700 dark:text-violet-400"
+            />
             <span
               className={`font-mono text-sm font-semibold tabular-nums ${
-                timeLeft < 300 ? 'text-rose-400' : 'text-white'
+                timeLeft < 300
+                  ? 'text-rose-600 dark:text-rose-400'
+                  : 'text-[#140f1f] dark:text-white'
               }`}
             >
               {formatTime(timeLeft)}
@@ -787,7 +834,7 @@ export function LiveInterviewView({
                 stopSpeech();
                 onCancel();
               }}
-              className="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white border border-[#16223b] bg-black transition-colors cursor-pointer whitespace-nowrap"
+              className="px-3.5 py-2 rounded-xl text-xs font-semibold text-[#5a5170] dark:text-[#a69cbe] hover:text-[#140f1f] dark:hover:text-white border border-[#e4ddf5] dark:border-[#26193f] bg-white dark:bg-black transition-colors cursor-pointer whitespace-nowrap"
             >
               Discard
             </button>
@@ -805,10 +852,13 @@ export function LiveInterviewView({
         </div>
       </div>
 
-      {/* Ultra-Pro Multi-Toggle Session Control Dock */}
+      {/* Multi-Toggle Session Control Dock */}
       <div className="amoled-surface rounded-2xl px-4 py-3 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
-          <SlidersHorizontal size={14} className="text-blue-400" />
+        <div className="flex items-center gap-2 text-xs font-semibold text-[#5a5170] dark:text-[#a69cbe]">
+          <SlidersHorizontal
+            size={14}
+            className="text-violet-700 dark:text-violet-400"
+          />
           <span>Session Controls</span>
         </div>
 
@@ -871,10 +921,11 @@ export function LiveInterviewView({
       <AnimatePresence>
         {errorToast && (
           <motion.div
+            role="alert"
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/40 text-rose-300 text-center text-xs font-medium"
+            className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/40 text-rose-700 dark:text-rose-300 text-center text-xs font-medium"
           >
             {errorToast}
           </motion.div>
@@ -888,11 +939,14 @@ export function LiveInterviewView({
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            className="amoled-surface rounded-2xl p-5 border-blue-500/30"
+            className="amoled-surface rounded-2xl p-5 border-violet-500/35"
           >
             <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2 text-sm font-bold text-white">
-                <FileText size={16} className="text-blue-400" />
+              <div className="flex items-center gap-2 text-sm font-bold text-[#140f1f] dark:text-white">
+                <FileText
+                  size={16}
+                  className="text-violet-700 dark:text-violet-400"
+                />
                 <span>
                   Active Resume Reference · {resume.candidateName} (
                   {resume.fileName})
@@ -900,24 +954,27 @@ export function LiveInterviewView({
               </div>
               <button
                 type="button"
+                aria-label="Close resume drawer"
                 onClick={() => setShowResumeDrawer(false)}
-                className="p-1 text-slate-400 hover:text-white cursor-pointer"
+                className="p-1 text-[#5a5170] dark:text-[#a69cbe] hover:text-[#140f1f] dark:hover:text-white cursor-pointer"
               >
                 <X size={16} />
               </button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-              <div className="bg-black border border-[#16223b] rounded-xl p-3.5 space-y-1.5">
-                <div className="font-semibold text-blue-400">Core Skills</div>
-                <p className="text-slate-300 leading-relaxed">
+              <div className="bg-white dark:bg-black border border-[#e4ddf5] dark:border-[#26193f] rounded-xl p-3.5 space-y-1.5">
+                <div className="font-semibold text-violet-700 dark:text-violet-400">
+                  Core Skills
+                </div>
+                <p className="text-[#362f47] dark:text-[#d8d0ea] leading-relaxed">
                   {resume.skills.slice(0, 12).join(' · ') || 'None parsed'}
                 </p>
               </div>
-              <div className="bg-black border border-[#16223b] rounded-xl p-3.5 space-y-1.5">
-                <div className="font-semibold text-cyan-400">
+              <div className="bg-white dark:bg-black border border-[#e4ddf5] dark:border-[#26193f] rounded-xl p-3.5 space-y-1.5">
+                <div className="font-semibold text-purple-700 dark:text-purple-400">
                   Highlighted Projects
                 </div>
-                <ul className="space-y-1 text-slate-300">
+                <ul className="space-y-1 text-[#362f47] dark:text-[#d8d0ea]">
                   {resume.projects.slice(0, 3).map((p, idx) => (
                     <li key={idx} className="truncate">
                       · {p.name}
@@ -925,11 +982,11 @@ export function LiveInterviewView({
                   ))}
                 </ul>
               </div>
-              <div className="bg-black border border-[#16223b] rounded-xl p-3.5 space-y-1.5">
-                <div className="font-semibold text-blue-300">
+              <div className="bg-white dark:bg-black border border-[#e4ddf5] dark:border-[#26193f] rounded-xl p-3.5 space-y-1.5">
+                <div className="font-semibold text-violet-700 dark:text-violet-300">
                   Targeted Probe Angles
                 </div>
-                <ul className="space-y-1 text-slate-300">
+                <ul className="space-y-1 text-[#362f47] dark:text-[#d8d0ea]">
                   {resume.tailoredAngles.slice(0, 2).map((angle, idx) => (
                     <li key={idx} className="line-clamp-2">
                       · {angle}
@@ -948,7 +1005,7 @@ export function LiveInterviewView({
         <div className="lg:col-span-5 amoled-surface rounded-2xl p-6 flex flex-col justify-between gap-5">
           <div className="flex flex-col items-center text-center pt-2">
             <div className="relative mb-5">
-              <div className="w-36 h-36 rounded-2xl bg-black border border-blue-500/30 flex items-center justify-center overflow-hidden shadow-2xl shadow-blue-950/40 relative">
+              <div className="w-36 h-36 rounded-2xl bg-black border border-violet-500/35 flex items-center justify-center overflow-hidden shadow-2xl shadow-violet-950/30 relative">
                 {!avatarLoadError ? (
                   <img
                     src={interviewerAvatar}
@@ -964,27 +1021,26 @@ export function LiveInterviewView({
                     }`}
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-950 to-black text-blue-400 font-bold text-2xl">
-                    AI
+                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-violet-950 to-black text-violet-300 font-bold text-2xl">
+                    IC
                   </div>
                 )}
 
                 {isThinking && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                    <div className="flex gap-1.5">
-                      <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
-                      <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce [animation-delay:-0.15s]" />
-                      <span className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" />
-                    </div>
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/55">
+                    <Loader2
+                      size={28}
+                      className="text-violet-400 animate-spin"
+                    />
                   </div>
                 )}
 
                 {isSpeaking && !isThinking && (
-                  <div className="absolute bottom-2.5 flex gap-1.5 items-center justify-center bg-black/85 px-3 py-1.5 rounded-xl border border-blue-500/30">
+                  <div className="absolute bottom-2.5 flex gap-1.5 items-center justify-center bg-black/85 px-3 py-1.5 rounded-xl border border-violet-500/35">
                     {[1, 2, 3, 4, 5].map((i) => (
                       <motion.div
                         key={i}
-                        className="w-1 rounded-full bg-blue-400"
+                        className="w-1 rounded-full bg-violet-400"
                         animate={{ height: ['5px', '16px', '7px', '18px', '6px'] }}
                         transition={{
                           duration: 1.0,
@@ -1000,14 +1056,14 @@ export function LiveInterviewView({
               </div>
             </div>
 
-            <h3 className="text-xl font-bold text-white">
+            <h3 className="text-xl font-bold text-[#140f1f] dark:text-white">
               {isThinking
                 ? 'Formulating Follow-Up'
                 : isSpeaking
                   ? 'Interviewer Speaking'
                   : 'Your Turn to Respond'}
             </h3>
-            <p className="text-xs text-slate-400 mt-1 max-w-xs">
+            <p className="text-xs text-[#5a5170] dark:text-[#a69cbe] mt-1 max-w-xs">
               {isThinking
                 ? 'Reviewing your response and resume alignment...'
                 : isSpeaking
@@ -1020,10 +1076,10 @@ export function LiveInterviewView({
 
           {/* Toggleable Live Transcript */}
           {showTranscript && (
-            <div className="flex-1 bg-black border border-[#16223b] rounded-xl p-4 overflow-y-auto min-h-[190px] max-h-[260px] flex flex-col gap-3 custom-scrollbar">
-              <div className="text-[11px] font-semibold text-blue-400 sticky top-0 bg-black/95 pb-2 border-b border-[#16223b] flex items-center justify-between">
+            <div className="flex-1 bg-white dark:bg-black border border-[#e4ddf5] dark:border-[#26193f] rounded-xl p-4 overflow-y-auto min-h-[190px] max-h-[260px] flex flex-col gap-3 custom-scrollbar">
+              <div className="text-[11px] font-semibold text-violet-700 dark:text-violet-400 sticky top-0 bg-white/95 dark:bg-black/95 pb-2 border-b border-[#e4ddf5] dark:border-[#26193f] flex items-center justify-between">
                 <span>Live Conversation</span>
-                <span className="font-mono text-slate-500 tabular-nums">
+                <span className="font-mono text-[#5a5170] dark:text-[#a69cbe] tabular-nums">
                   Turn {turnCount}
                 </span>
               </div>
@@ -1038,8 +1094,8 @@ export function LiveInterviewView({
                   <span
                     className={`text-[11px] font-semibold ${
                       msg.role === 'interviewer'
-                        ? 'text-blue-400'
-                        : 'text-slate-400'
+                        ? 'text-violet-700 dark:text-violet-400'
+                        : 'text-[#5a5170] dark:text-[#a69cbe]'
                     }`}
                   >
                     {msg.role === 'interviewer' ? 'Interviewer' : 'You'}
@@ -1047,8 +1103,8 @@ export function LiveInterviewView({
                   <div
                     className={`p-3 rounded-xl text-xs sm:text-sm leading-relaxed max-w-[92%] ${
                       msg.role === 'interviewer'
-                        ? 'bg-[#0a1120] border border-[#16223b] text-slate-200'
-                        : 'bg-blue-600/15 border border-blue-500/30 text-blue-100'
+                        ? 'bg-[#faf8ff] dark:bg-[#120b1f] border border-[#e4ddf5] dark:border-[#26193f] text-[#140f1f] dark:text-[#e9e4f5]'
+                        : 'bg-violet-600/12 border border-violet-500/35 text-[#140f1f] dark:text-violet-100'
                     }`}
                   >
                     {msg.text}
@@ -1057,11 +1113,11 @@ export function LiveInterviewView({
               ))}
 
               {!isThinking && answerText.trim() && (
-                <div className="flex flex-col gap-1 items-end opacity-75">
-                  <span className="text-[11px] font-semibold text-slate-400">
+                <div className="flex flex-col gap-1 items-end opacity-80">
+                  <span className="text-[11px] font-semibold text-[#5a5170] dark:text-[#a69cbe]">
                     You (Draft)
                   </span>
-                  <div className="p-3 rounded-xl text-xs sm:text-sm leading-relaxed max-w-[92%] bg-blue-600/10 border border-blue-500/20 text-blue-100">
+                  <div className="p-3 rounded-xl text-xs sm:text-sm leading-relaxed max-w-[92%] bg-violet-600/10 border border-violet-500/25 text-[#140f1f] dark:text-violet-100">
                     {answerText}
                   </div>
                 </div>
@@ -1076,7 +1132,7 @@ export function LiveInterviewView({
               type="button"
               onClick={repeatLastAudio}
               disabled={isThinking || !voiceEnabled}
-              className="px-3.5 py-2.5 bg-black hover:bg-[#0a1120] disabled:opacity-40 border border-[#16223b] rounded-xl text-white text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer"
+              className="px-3.5 py-2.5 bg-white dark:bg-black hover:bg-[#f3effb] dark:hover:bg-[#120b1f] disabled:opacity-40 border border-[#e4ddf5] dark:border-[#26193f] rounded-xl text-[#140f1f] dark:text-white text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer"
             >
               <RefreshCcw size={14} />
               <span>Replay</span>
@@ -1086,7 +1142,7 @@ export function LiveInterviewView({
               type="button"
               onClick={handleStuck}
               disabled={isThinking}
-              className="px-3.5 py-2.5 bg-amber-500/10 hover:bg-amber-500/20 disabled:opacity-40 text-amber-300 border border-amber-500/30 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer"
+              className="px-3.5 py-2.5 bg-amber-500/10 hover:bg-amber-500/20 disabled:opacity-40 text-amber-700 dark:text-amber-300 border border-amber-500/35 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer"
             >
               <HelpCircle size={14} />
               <span>Request Hint</span>
@@ -1106,17 +1162,17 @@ export function LiveInterviewView({
 
         {/* Right Panel: Video / Focus Stage & Input Dock (7 cols) */}
         <div className="lg:col-span-7 amoled-surface rounded-2xl p-6 flex flex-col gap-5 group/right">
-          <div className="flex-1 bg-black rounded-2xl overflow-hidden relative border border-[#16223b] min-h-[280px] flex items-center justify-center">
+          <div className="flex-1 bg-[#140f1f] dark:bg-black rounded-2xl overflow-hidden relative border border-[#e4ddf5] dark:border-[#26193f] min-h-[280px] flex items-center justify-center">
             {!cameraEnabled ? (
               <div className="flex flex-col items-center justify-center p-6 text-center space-y-3">
-                <div className="w-16 h-16 rounded-2xl bg-[#0a1120] border border-blue-500/30 flex items-center justify-center text-blue-400">
+                <div className="w-16 h-16 rounded-2xl bg-[#24173d] dark:bg-[#120b1f] border border-violet-500/35 flex items-center justify-center text-violet-300">
                   <Mic size={28} />
                 </div>
                 <div>
                   <h4 className="text-sm font-bold text-white">
                     Audio Focus Mode Active
                   </h4>
-                  <p className="text-xs text-slate-400 mt-1">
+                  <p className="text-xs text-[#d8d0ea] dark:text-[#a69cbe] mt-1">
                     Camera feed is paused to minimize distraction. Toggle Camera
                     above anytime.
                   </p>
@@ -1142,7 +1198,7 @@ export function LiveInterviewView({
               </>
             ) : (
               <div className="flex flex-col items-center justify-center p-6 text-center z-10 space-y-4 max-w-sm">
-                <div className="w-16 h-16 bg-[#0a1120] border border-[#16223b] rounded-2xl flex items-center justify-center text-amber-400 relative">
+                <div className="w-16 h-16 bg-[#24173d] dark:bg-[#120b1f] border border-[#352459] rounded-2xl flex items-center justify-center text-amber-400 relative">
                   <VideoOff size={30} />
                   <AlertCircle
                     size={14}
@@ -1153,17 +1209,17 @@ export function LiveInterviewView({
                   <h4 className="text-sm font-bold text-white mb-1">
                     Camera Stream Unavailable
                   </h4>
-                  <p className="text-xs text-slate-400 leading-relaxed mb-1">
+                  <p className="text-xs text-[#d8d0ea] leading-relaxed mb-1">
                     {webcamErrorMessage || 'Could not start video source.'}
                   </p>
-                  <p className="text-[11px] text-slate-500">
+                  <p className="text-[11px] text-[#a69cbe]">
                     Your voice and text interview continues seamlessly.
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={retryWebcam}
-                  className="px-4 py-2 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/40 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer"
+                  className="px-4 py-2 bg-violet-600/25 hover:bg-violet-600/40 text-violet-200 border border-violet-500/40 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer"
                 >
                   <RefreshCcw size={13} />
                   <span>Retry Camera</span>
@@ -1171,17 +1227,18 @@ export function LiveInterviewView({
               </div>
             )}
 
-            {/* Camera Device Controls */}
+            {/* Camera Device Controls — always touch/focus reachable */}
             {cameraEnabled && (
-              <div className="absolute top-4 right-4 flex items-center gap-2 opacity-0 group-hover/right:opacity-100 transition-opacity duration-200 z-30">
+              <div className="absolute top-4 right-4 flex items-center gap-2 opacity-100 sm:opacity-0 sm:group-hover/right:opacity-100 focus-within:opacity-100 transition-opacity duration-200 z-30">
                 {devices.length > 1 && (
                   <select
+                    aria-label="Select camera device"
                     value={selectedDeviceId}
                     onChange={(e) => {
                       setSelectedDeviceId(e.target.value);
                       setWebcamError(false);
                     }}
-                    className="bg-black/90 text-white text-xs font-medium border border-[#16223b] rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+                    className="bg-black/90 text-white text-xs font-medium border border-[#26193f] rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-violet-500"
                   >
                     {devices.map((device, idx) => (
                       <option key={device.deviceId} value={device.deviceId}>
@@ -1196,7 +1253,8 @@ export function LiveInterviewView({
                     toggleCameraFacing();
                     setWebcamError(false);
                   }}
-                  className="p-2 bg-black/90 hover:bg-blue-600 rounded-xl border border-[#16223b] text-white transition-all flex items-center gap-1.5 text-xs font-medium cursor-pointer"
+                  aria-label="Flip camera orientation"
+                  className="p-2 bg-black/90 hover:bg-violet-600 rounded-xl border border-[#26193f] text-white transition-all flex items-center gap-1.5 text-xs font-medium cursor-pointer"
                   title="Flip Camera"
                 >
                   <Camera size={14} />
@@ -1207,14 +1265,14 @@ export function LiveInterviewView({
 
             {/* Active Audio Waveform */}
             {isMicOn && !isThinking && !isSpeaking && (
-              <div className="absolute bottom-4 right-4 flex items-center gap-3 bg-black/85 px-3.5 py-2 rounded-xl border border-[#16223b] z-20">
+              <div className="absolute bottom-4 right-4 flex items-center gap-3 bg-black/85 px-3.5 py-2 rounded-xl border border-[#26193f] z-20">
                 <canvas
                   ref={visualizerCanvasRef}
                   width={60}
                   height={20}
-                  className="opacity-90"
+                  className="opacity-95"
                 />
-                <span className="text-[11px] font-mono font-semibold text-cyan-400">
+                <span className="text-[11px] font-mono font-semibold text-purple-300">
                   MIC LIVE
                 </span>
               </div>
@@ -1224,23 +1282,42 @@ export function LiveInterviewView({
           {/* Response Input Box */}
           <div className="space-y-2">
             <div className="flex items-center justify-between px-1">
-              <label className="text-xs font-semibold text-slate-300 flex items-center gap-2">
-                <Mic size={14} className="text-blue-400" />
+              <label
+                htmlFor="live-response-textarea"
+                className="text-xs font-semibold text-[#362f47] dark:text-[#d8d0ea] flex items-center gap-2"
+              >
+                <Mic
+                  size={14}
+                  className="text-violet-700 dark:text-violet-400"
+                />
                 <span>Your Response Transcript</span>
               </label>
-              <span className="text-xs font-mono text-slate-400 tabular-nums">
+              <span className="text-xs font-mono text-[#5a5170] dark:text-[#a69cbe] tabular-nums">
                 {autoSubmitEnabled
-                  ? 'Auto-send after 5s silence'
-                  : 'Manual send mode'}
+                  ? 'Auto-send after 5s silence · Ctrl+Enter'
+                  : 'Manual mode · Ctrl+Enter to send'}
               </span>
             </div>
 
             <textarea
+              id="live-response-textarea"
               ref={transcriptTextareaRef}
               value={answerText}
               onChange={(e) => {
                 setAnswerText(e.target.value);
                 persistedTranscriptRef.current = e.target.value;
+              }}
+              onKeyDown={(e) => {
+                if (
+                  (e.ctrlKey || e.metaKey) &&
+                  e.key === 'Enter' &&
+                  !isThinking &&
+                  !isSpeaking &&
+                  answerText.trim()
+                ) {
+                  e.preventDefault();
+                  submitCandidateInteraction();
+                }
               }}
               disabled={isThinking}
               placeholder={
@@ -1252,23 +1329,27 @@ export function LiveInterviewView({
                       ? 'Speak into your microphone or type your response here...'
                       : 'Microphone muted. Type your response here...'
               }
-              className="w-full h-28 bg-black border border-[#16223b] rounded-xl p-4 text-slate-100 text-sm leading-relaxed focus:border-blue-500 focus:outline-none resize-none disabled:opacity-50"
+              className="w-full h-28 bg-white dark:bg-black border border-[#e4ddf5] dark:border-[#26193f] rounded-xl p-4 text-[#140f1f] dark:text-[#f5f3ff] text-sm leading-relaxed focus:border-violet-500 focus:outline-none resize-none disabled:opacity-50"
             />
           </div>
 
           {/* Bottom Microphone & Status Strip */}
-          <div className="flex flex-wrap items-center justify-between gap-3 bg-black rounded-xl px-4 py-3 border border-[#16223b]">
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-black rounded-xl px-4 py-3 border border-[#e4ddf5] dark:border-[#26193f]">
             <div className="text-xs font-medium">
               {isThinking ? (
-                <span className="text-blue-400">Analyzing response...</span>
+                <span className="text-violet-700 dark:text-violet-400">
+                  Analyzing response...
+                </span>
               ) : isSpeaking ? (
-                <span className="text-cyan-400">Interviewer speaking...</span>
+                <span className="text-purple-700 dark:text-purple-400">
+                  Interviewer speaking...
+                </span>
               ) : isMicOn ? (
-                <span className="text-emerald-400">
+                <span className="text-emerald-700 dark:text-emerald-400">
                   Listening via microphone
                 </span>
               ) : (
-                <span className="text-slate-400">
+                <span className="text-[#5a5170] dark:text-[#a69cbe]">
                   Microphone muted (text input active)
                 </span>
               )}
@@ -1276,12 +1357,13 @@ export function LiveInterviewView({
 
             <button
               type="button"
+              aria-pressed={isMicOn}
               onClick={() => setIsMicOn(!isMicOn)}
               disabled={isThinking || isSpeaking}
               className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors flex items-center gap-1.5 cursor-pointer ${
                 isMicOn
-                  ? 'bg-blue-600/15 text-blue-300 border-blue-500/40 hover:bg-blue-600/25'
-                  : 'bg-[#0a1120] text-slate-300 border-[#16223b] hover:text-white'
+                  ? 'bg-violet-600/15 text-violet-700 dark:text-violet-300 border-violet-500/40 hover:bg-violet-600/25'
+                  : 'bg-[#faf8ff] dark:bg-[#120b1f] text-[#362f47] dark:text-[#d8d0ea] border-[#e4ddf5] dark:border-[#26193f] hover:text-[#140f1f] dark:hover:text-white'
               }`}
             >
               {isMicOn ? <Mic size={13} /> : <MicOff size={13} />}
@@ -1308,11 +1390,12 @@ function ToggleButton({
   return (
     <button
       type="button"
+      aria-pressed={active}
       onClick={onClick}
       className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer ${
         active
-          ? 'bg-blue-600/20 border-blue-500/50 text-blue-300'
-          : 'bg-black border-[#16223b] text-slate-400 hover:text-white'
+          ? 'bg-violet-600/15 border-violet-500/50 text-violet-800 dark:text-violet-300'
+          : 'bg-white dark:bg-black border-[#e4ddf5] dark:border-[#26193f] text-[#5a5170] dark:text-[#a69cbe] hover:text-[#140f1f] dark:hover:text-white'
       }`}
     >
       {icon}

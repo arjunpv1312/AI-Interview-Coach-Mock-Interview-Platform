@@ -128,20 +128,20 @@ export function SecurityView({
   return (
     <div className="max-w-5xl mx-auto space-y-8 pb-12">
       {/* Top Action Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#16223b] pb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#e4ddf5] dark:border-[#26193f] pb-6">
         <div className="space-y-1">
           <button
             type="button"
             onClick={() => onNavigate('dashboard')}
-            className="flex items-center gap-2 text-xs font-medium text-slate-400 hover:text-white transition-colors mb-2 cursor-pointer"
+            className="flex items-center gap-2 text-xs font-medium text-[#5a5170] dark:text-[#a69cbe] hover:text-[#140f1f] dark:hover:text-white transition-colors mb-2 cursor-pointer"
           >
             <ArrowLeft size={15} />
             <span>Back to Dashboard</span>
           </button>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#140f1f] dark:text-white tracking-tight">
             Security &amp; Encryption Audit
           </h1>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-[#5a5170] dark:text-[#a69cbe]">
             Live verification of AES-256-GCM local vault encryption, PBKDF2
             credential hashing, TLS/HTTPS headers, and zero-retention server
             processing.
@@ -152,7 +152,7 @@ export function SecurityView({
           type="button"
           onClick={runLiveAudit}
           disabled={auditing}
-          className="px-4 py-2.5 rounded-xl bg-black hover:bg-[#0a1120] border border-blue-500/40 text-xs font-semibold text-blue-300 flex items-center gap-2 transition-all self-start sm:self-auto cursor-pointer whitespace-nowrap"
+          className="px-4 py-2.5 rounded-xl bg-white dark:bg-black hover:bg-[#f6f3fd] dark:hover:bg-[#120b24] border border-violet-500/40 text-xs font-semibold text-violet-700 dark:text-violet-300 flex items-center gap-2 transition-all self-start sm:self-auto cursor-pointer whitespace-nowrap"
         >
           {auditing ? (
             <Loader2 size={14} className="animate-spin" />
@@ -169,10 +169,10 @@ export function SecurityView({
           <div
             className={`w-12 h-12 rounded-xl flex items-center justify-center border shrink-0 ${
               auditing
-                ? 'bg-blue-600/15 border-blue-500/30 text-blue-400'
+                ? 'bg-violet-600/15 border-violet-500/35 text-violet-700 dark:text-violet-400'
                 : allChecksHealthy
-                  ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
-                  : 'bg-amber-500/15 border-amber-500/30 text-amber-400'
+                  ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-700 dark:text-emerald-400'
+                  : 'bg-amber-500/15 border-amber-500/30 text-amber-700 dark:text-amber-400'
             }`}
           >
             {auditing ? (
@@ -184,14 +184,14 @@ export function SecurityView({
             )}
           </div>
           <div>
-            <div className="text-base font-bold text-white">
+            <div className="text-base font-bold text-[#140f1f] dark:text-white">
               {auditing
                 ? 'Running Cryptographic & Header Inspection...'
                 : allChecksHealthy
                   ? 'Zero-Knowledge Vault & Hardened Transport Active'
                   : 'Partial Protection — Review Warnings Below'}
             </div>
-            <div className="text-xs text-slate-400 mt-0.5 font-mono tabular-nums">
+            <div className="text-xs text-[#5a5170] dark:text-[#a69cbe] mt-0.5 font-mono tabular-nums">
               {clientAudit
                 ? `Plaintext Leaks: ${clientAudit.plaintextLeaksDetected} · Encrypted Profiles: ${clientAudit.encryptedRecordsCount}`
                 : 'Inspecting local storage...'}
@@ -200,7 +200,7 @@ export function SecurityView({
         </div>
 
         {serverAudit && (
-          <div className="text-xs font-mono text-cyan-400 bg-black border border-[#16223b] rounded-xl px-3.5 py-2 tabular-nums">
+          <div className="text-xs font-mono text-violet-700 dark:text-purple-400 bg-white dark:bg-black border border-[#e4ddf5] dark:border-[#26193f] rounded-xl px-3.5 py-2 tabular-nums">
             Rate Quota: {serverAudit.rateLimit.remaining}/
             {serverAudit.rateLimit.limit} req/min
           </div>
@@ -208,14 +208,20 @@ export function SecurityView({
       </div>
 
       {serverError && (
-        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/40 text-rose-300 text-xs flex items-center gap-2">
+        <div
+          role="alert"
+          className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/40 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2"
+        >
           <AlertTriangle size={16} />
           <span>{serverError}</span>
         </div>
       )}
 
       {rotateMessage && (
-        <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/40 text-emerald-300 text-xs flex items-center gap-2">
+        <div
+          aria-live="polite"
+          className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/40 text-emerald-700 dark:text-emerald-300 text-xs flex items-center gap-2"
+        >
           <CheckCircle2 size={16} />
           <span>{rotateMessage}</span>
         </div>
@@ -227,8 +233,11 @@ export function SecurityView({
         <div className="amoled-surface rounded-2xl p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <Lock size={18} className="text-blue-400" />
-              <h2 className="text-base font-bold text-white">
+              <Lock
+                size={18}
+                className="text-violet-700 dark:text-violet-400"
+              />
+              <h2 className="text-base font-bold text-[#140f1f] dark:text-white">
                 Client-Side Data Encryption
               </h2>
             </div>
@@ -269,8 +278,11 @@ export function SecurityView({
         <div className="amoled-surface rounded-2xl p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <KeyRound size={18} className="text-cyan-400" />
-              <h2 className="text-base font-bold text-white">
+              <KeyRound
+                size={18}
+                className="text-purple-700 dark:text-purple-400"
+              />
+              <h2 className="text-base font-bold text-[#140f1f] dark:text-white">
                 Credential &amp; Session Hardening
               </h2>
             </div>
@@ -304,8 +316,11 @@ export function SecurityView({
         <div className="amoled-surface rounded-2xl p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <Server size={18} className="text-blue-400" />
-              <h2 className="text-base font-bold text-white">
+              <Server
+                size={18}
+                className="text-violet-700 dark:text-violet-400"
+              />
+              <h2 className="text-base font-bold text-[#140f1f] dark:text-white">
                 TLS Transport &amp; HTTP Headers
               </h2>
             </div>
@@ -343,8 +358,11 @@ export function SecurityView({
         <div className="amoled-surface rounded-2xl p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <EyeOff size={18} className="text-emerald-400" />
-              <h2 className="text-base font-bold text-white">
+              <EyeOff
+                size={18}
+                className="text-emerald-700 dark:text-emerald-400"
+              />
+              <h2 className="text-base font-bold text-[#140f1f] dark:text-white">
                 Zero-Retention Resume Guard
               </h2>
             </div>
@@ -375,21 +393,24 @@ export function SecurityView({
       <div className="amoled-surface rounded-2xl p-6 space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
-            <FileKey2 size={18} className="text-blue-400" />
-            <h2 className="text-base font-bold text-white">
+            <FileKey2
+              size={18}
+              className="text-violet-700 dark:text-violet-400"
+            />
+            <h2 className="text-base font-bold text-[#140f1f] dark:text-white">
               Live Storage Ciphertext Proof
             </h2>
           </div>
-          <span className="text-xs text-slate-400">
+          <span className="text-xs text-[#5a5170] dark:text-[#a69cbe]">
             Actual raw value saved in browser localStorage
           </span>
         </div>
 
-        <div className="bg-black border border-[#16223b] rounded-xl p-4 font-mono text-xs text-cyan-300 break-all leading-relaxed">
+        <div className="bg-white dark:bg-black border border-[#e4ddf5] dark:border-[#26193f] rounded-xl p-4 font-mono text-xs text-violet-800 dark:text-purple-300 break-all leading-relaxed">
           {clientAudit?.ciphertextPreview || 'Checking storage...'}
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-[#16223b]">
+        <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-[#e4ddf5] dark:border-[#26193f]">
           <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
@@ -412,7 +433,7 @@ export function SecurityView({
               <button
                 type="button"
                 onClick={onLockNow}
-                className="px-4 py-2.5 rounded-xl bg-black hover:bg-[#0a1120] border border-blue-500/40 text-blue-300 text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer"
+                className="px-4 py-2.5 rounded-xl bg-white dark:bg-black hover:bg-[#f6f3fd] dark:hover:bg-[#120b24] border border-violet-500/40 text-violet-700 dark:text-violet-300 text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer"
               >
                 <Lock size={14} />
                 <span>Lock Vault Now</span>
@@ -425,14 +446,14 @@ export function SecurityView({
               <button
                 type="button"
                 onClick={() => setConfirmWipe(true)}
-                className="px-4 py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/40 text-rose-300 text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer"
+                className="px-4 py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/40 text-rose-700 dark:text-rose-300 text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer"
               >
                 <Trash2 size={14} />
                 <span>Wipe All Encrypted Data</span>
               </button>
             ) : (
               <div className="flex items-center gap-2">
-                <span className="text-xs text-rose-300">
+                <span className="text-xs text-rose-700 dark:text-rose-300">
                   Erase all local profiles &amp; resumes?
                 </span>
                 <button
@@ -446,7 +467,7 @@ export function SecurityView({
                 <button
                   type="button"
                   onClick={() => setConfirmWipe(false)}
-                  className="px-3 py-2 rounded-lg bg-black border border-[#16223b] text-slate-300 text-xs cursor-pointer"
+                  className="px-3 py-2 rounded-lg bg-white dark:bg-black border border-[#e4ddf5] dark:border-[#26193f] text-[#362f47] dark:text-[#d8d0ea] text-xs cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -471,7 +492,9 @@ function StatusLabel({
   return (
     <span
       className={`text-xs font-semibold flex items-center gap-1.5 ${
-        ok ? 'text-emerald-400' : 'text-amber-400'
+        ok
+          ? 'text-emerald-700 dark:text-emerald-400'
+          : 'text-amber-700 dark:text-amber-400'
       }`}
     >
       {ok ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}
@@ -482,9 +505,9 @@ function StatusLabel({
 
 function AuditRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between gap-4 py-2 border-b border-[#16223b]/70 last:border-b-0">
-      <span className="text-slate-400">{label}</span>
-      <span className="font-mono text-slate-200 text-right tabular-nums">
+    <div className="flex items-center justify-between gap-4 py-2 border-b border-[#e4ddf5]/80 dark:border-[#26193f]/70 last:border-b-0">
+      <span className="text-[#5a5170] dark:text-[#a69cbe]">{label}</span>
+      <span className="font-mono text-[#140f1f] dark:text-[#d8d0ea] text-right tabular-nums">
         {value}
       </span>
     </div>
