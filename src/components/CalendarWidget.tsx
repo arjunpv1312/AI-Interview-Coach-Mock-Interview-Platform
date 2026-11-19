@@ -300,7 +300,7 @@ export function CalendarWidget({
           <div className="flex-1 flex flex-col items-center justify-center text-center py-8">
             <CalendarIcon
               size={36}
-              className="mb-3 text-violet-500/60 dark:text-violet-400/50"
+              className="mb-3 text-violet-700 dark:text-violet-400"
             />
             <p className="text-sm font-semibold text-[#140f1f] dark:text-white">
               No sessions recorded for this date
@@ -379,7 +379,7 @@ export function CalendarWidget({
                         type="button"
                         onClick={() => handleDeleteScheduled(session.id)}
                         aria-label={`Delete scheduled ${session.company} session`}
-                        className="p-1.5 rounded-lg bg-[#faf8ff] dark:bg-[#08050f] border border-[#e4ddf5] dark:border-[#26193f] text-[#5a5170] dark:text-[#a69cbe] hover:text-rose-600 dark:hover:text-rose-400 transition-colors cursor-pointer"
+                        className="p-1.5 rounded-lg bg-[#faf8ff] dark:bg-[#08050f] border border-[#e4ddf5] dark:border-[#26193f] text-[#5a5170] dark:text-[#a69cbe] hover:text-rose-700 dark:hover:text-rose-400 transition-colors cursor-pointer"
                         title="Remove scheduled session"
                       >
                         <Trash2 size={14} />
@@ -392,7 +392,7 @@ export function CalendarWidget({
 
             {selectedPast.length > 0 && (
               <div className="space-y-3">
-                <div className="flex items-center gap-2 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                <div className="flex items-center gap-2 text-xs font-bold text-emerald-700 dark:text-emerald-400">
                   <CheckCircle2 size={14} />
                   <span>Completed Sessions</span>
                 </div>
@@ -410,7 +410,7 @@ export function CalendarWidget({
                           {session.role} · {session.crackProbability}
                         </div>
                       </div>
-                      <div className="text-sm font-bold font-mono tabular-nums text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                      <div className="text-sm font-bold font-mono tabular-nums text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
                         <Target size={13} />
                         <span>{session.score}%</span>
                       </div>

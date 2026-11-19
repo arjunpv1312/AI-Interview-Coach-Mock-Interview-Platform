@@ -191,7 +191,7 @@ export function SetupView({
                   type="button"
                   onClick={handleClearResume}
                   aria-label="Remove uploaded resume"
-                  className="text-xs text-rose-600 dark:text-rose-400 hover:text-rose-500 dark:hover:text-rose-300 flex items-center gap-1 cursor-pointer"
+                  className="text-xs text-rose-700 dark:text-rose-400 hover:text-rose-800 dark:hover:text-rose-300 flex items-center gap-1 cursor-pointer"
                 >
                   <Trash2 size={13} />
                   <span>Remove</span>
@@ -295,7 +295,7 @@ export function SetupView({
                     <div className="flex items-center gap-2 text-sm font-bold text-[#140f1f] dark:text-white">
                       <CheckCircle2
                         size={15}
-                        className="text-emerald-600 dark:text-emerald-400"
+                        className="text-emerald-700 dark:text-emerald-400"
                       />
                       <span>{resume.candidateName}</span>
                     </div>

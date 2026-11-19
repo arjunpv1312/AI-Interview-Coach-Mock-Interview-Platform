@@ -590,7 +590,7 @@ export default function App() {
                     setMobileMenuOpen(false);
                     setView('auth');
                   }}
-                  className="text-xs font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-1.5 cursor-pointer"
+                  className="text-xs font-semibold text-rose-700 dark:text-rose-400 flex items-center gap-1.5 cursor-pointer"
                 >
                   <LogOut size={14} />
                   <span>Sign Out</span>

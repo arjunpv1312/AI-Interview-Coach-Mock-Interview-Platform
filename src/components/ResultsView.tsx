@@ -31,10 +31,10 @@ function AnimatedScoreNumber({ score }: { score: number }) {
 
   const colorClass =
     score >= 80
-      ? 'text-emerald-600 dark:text-emerald-400'
+      ? 'text-emerald-700 dark:text-emerald-400'
       : score >= 60
         ? 'text-violet-700 dark:text-violet-400'
-        : 'text-rose-600 dark:text-rose-400';
+        : 'text-rose-700 dark:text-rose-400';
 
   return (
     <div className="flex items-baseline gap-1.5 font-mono tabular-nums">
@@ -59,22 +59,22 @@ const CircularCompetencyRing: React.FC<{
   const targetOffset = circumference - (clamped / 100) * circumference;
   const staggerDelay = index * 0.09;
 
-  const strokeColor =
+  const strokeClass =
     clamped >= 80
-      ? '#10b981'
+      ? 'stroke-emerald-700 dark:stroke-emerald-400'
       : clamped >= 60
-        ? '#8b5cf6'
-        : '#f43f5e';
+        ? 'stroke-violet-700 dark:stroke-violet-400'
+        : 'stroke-rose-700 dark:stroke-rose-400';
 
   const statusLabel =
     clamped >= 80 ? 'Strong' : clamped >= 60 ? 'Proficient' : 'Needs Focus';
 
   const badgeTextColor =
     clamped >= 80
-      ? 'text-emerald-600 dark:text-emerald-400'
+      ? 'text-emerald-700 dark:text-emerald-400'
       : clamped >= 60
         ? 'text-violet-700 dark:text-violet-300'
-        : 'text-rose-600 dark:text-rose-400';
+        : 'text-rose-700 dark:text-rose-400';
 
   return (
     <motion.div
@@ -108,7 +108,7 @@ const CircularCompetencyRing: React.FC<{
             r={radius}
             fill="none"
             strokeWidth="7"
-            stroke={strokeColor}
+            className={strokeClass}
             strokeLinecap="round"
             strokeDasharray={circumference}
             initial={{ strokeDashoffset: circumference }}
@@ -586,10 +586,10 @@ export function ResultsView({
               const isOpen = expandedReviewIdx === idx;
               const verdictStyle =
                 item.verdict === 'Strong'
-                  ? 'text-emerald-600 dark:text-emerald-400'
+                  ? 'text-emerald-700 dark:text-emerald-400'
                   : item.verdict === 'Partial'
                     ? 'text-violet-700 dark:text-violet-400'
-                    : 'text-rose-600 dark:text-rose-400';
+                    : 'text-rose-700 dark:text-rose-400';
 
               return (
                 <div
@@ -644,7 +644,7 @@ export function ResultsView({
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="bg-white dark:bg-black border border-[#e4ddf5] dark:border-[#26193f] rounded-xl p-4 space-y-1.5">
-                          <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
+                          <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
                             <AlertTriangle size={14} />
                             <span>Interviewer Critique</span>
                           </div>
@@ -678,7 +678,7 @@ export function ResultsView({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="amoled-surface rounded-2xl p-6 space-y-4">
               <h2 className="text-base font-bold text-[#140f1f] dark:text-white flex items-center gap-2">
-                <AlertTriangle size={17} className="text-amber-600 dark:text-amber-400" />
+                <AlertTriangle size={17} className="text-amber-700 dark:text-amber-400" />
                 <span>Priority Improvements</span>
               </h2>
               <ul className="space-y-3">

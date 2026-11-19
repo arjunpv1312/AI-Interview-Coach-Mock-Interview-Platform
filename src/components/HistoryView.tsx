@@ -125,7 +125,7 @@ export function HistoryView({ user, onNavigate }: HistoryViewProps) {
         <div className="relative">
           <Search
             size={16}
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-[#766b91] dark:text-[#867aa3]"
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-[#5a5170] dark:text-[#a69cbe]"
           />
           <input
             type="text"
@@ -133,7 +133,7 @@ export function HistoryView({ user, onNavigate }: HistoryViewProps) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Filter history by company, role, or resume filename..."
-            className="w-full bg-white dark:bg-[#08050f] border border-[#e4ddf5] dark:border-[#26193f] rounded-xl py-3 pl-11 pr-4 text-sm text-[#140f1f] dark:text-white placeholder:text-[#766b91] focus:ring-2 focus:ring-violet-500 outline-none"
+            className="w-full bg-white dark:bg-[#08050f] border border-[#e4ddf5] dark:border-[#26193f] rounded-xl py-3 pl-11 pr-4 text-sm text-[#140f1f] dark:text-white placeholder:text-[#5a5170] dark:placeholder:text-[#a69cbe] focus:ring-2 focus:ring-violet-500 outline-none"
           />
         </div>
       )}
@@ -197,7 +197,7 @@ export function HistoryView({ user, onNavigate }: HistoryViewProps) {
                   <div className="flex items-center gap-1.5 text-xs text-[#362f47] dark:text-[#d8d0ea] font-mono tabular-nums">
                     <Calendar
                       size={13}
-                      className="text-[#766b91] dark:text-[#867aa3]"
+                      className="text-[#5a5170] dark:text-[#a69cbe]"
                     />
                     <span>
                       {session.date

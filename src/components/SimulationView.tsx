@@ -214,7 +214,7 @@ export function SimulationView({
             disabled={!isFormValid || loading}
             className={`w-full py-3.5 rounded-xl flex justify-center items-center gap-2 text-sm font-bold transition-all cursor-pointer ${
               !isFormValid || loading
-                ? 'bg-[#f4f0fb] dark:bg-[#140e24] text-[#766b91] border border-[#e4ddf5] dark:border-[#26193f] cursor-not-allowed'
+                ? 'bg-[#f4f0fb] dark:bg-[#140e24] text-[#5a5170] dark:text-[#a69cbe] border border-[#e4ddf5] dark:border-[#26193f] cursor-not-allowed'
                 : 'amoled-btn-primary text-white'
             }`}
           >
@@ -244,7 +244,7 @@ export function SimulationView({
             <div className="flex-1 flex flex-col items-center justify-center text-center py-12">
               <Brain
                 size={40}
-                className="mb-3 text-[#b8add4] dark:text-[#4c3a75]"
+                className="mb-3 text-violet-700 dark:text-violet-400"
               />
               <p className="text-sm font-semibold text-[#362f47] dark:text-[#d8d0ea]">
                 Ready to synthesize tailored questions

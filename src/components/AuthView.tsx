@@ -303,7 +303,7 @@ export function AuthView({
                   <div className="flex items-center gap-1.5 text-xs text-[#5a5170] dark:text-[#a69cbe] mb-1">
                     <ShieldCheck
                       size={13}
-                      className="text-emerald-600 dark:text-emerald-400"
+                      className="text-emerald-700 dark:text-emerald-400"
                     />
                     <span>Vault Cipher</span>
                   </div>
@@ -441,7 +441,7 @@ export function AuthView({
                       className="animate-spin text-violet-600 dark:text-violet-400"
                     />
                   ) : (
-                    <span className="w-4 h-4 rounded-full bg-violet-700 dark:bg-violet-500 text-white text-[10px] font-bold flex items-center justify-center">
+                    <span className="w-4 h-4 rounded-full bg-violet-700 text-white text-[10px] font-bold flex items-center justify-center">
                       G
                     </span>
                   )}

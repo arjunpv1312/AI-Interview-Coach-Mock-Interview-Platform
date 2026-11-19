@@ -137,14 +137,14 @@ export function QuestionBankView({
 
         <div className="relative">
           <Search
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-[#766b91] dark:text-[#867aa3]"
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-[#5a5170] dark:text-[#a69cbe]"
             size={18}
           />
           <input
             type="text"
             aria-label="Search questions by topic, company, or role"
             placeholder="Search by topic, company, or role (e.g. 'Rate limiter', 'React', 'Google')..."
-            className="w-full bg-white dark:bg-black border border-[#e4ddf5] dark:border-[#26193f] rounded-xl py-3 pl-11 pr-4 text-sm text-[#140f1f] dark:text-white placeholder:text-[#766b91] dark:placeholder:text-[#766b91] focus:ring-2 focus:ring-violet-500 outline-none"
+            className="w-full bg-white dark:bg-black border border-[#e4ddf5] dark:border-[#26193f] rounded-xl py-3 pl-11 pr-4 text-sm text-[#140f1f] dark:text-white placeholder:text-[#5a5170] dark:placeholder:text-[#a69cbe] focus:ring-2 focus:ring-violet-500 outline-none"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />

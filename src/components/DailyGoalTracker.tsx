@@ -36,7 +36,7 @@ export function DailyGoalTracker({
           <div
             className={`p-2.5 rounded-xl border ${
               isGoalReached
-                ? 'bg-emerald-500/15 border-emerald-500/35 text-emerald-600 dark:text-emerald-400'
+                ? 'bg-emerald-500/15 border-emerald-500/35 text-emerald-700 dark:text-emerald-400'
                 : 'bg-violet-100 dark:bg-violet-600/20 border-violet-300 dark:border-violet-500/35 text-violet-700 dark:text-violet-400'
             }`}
           >
@@ -91,7 +91,7 @@ export function DailyGoalTracker({
             <span
               className={`text-2xl font-bold ${
                 isGoalReached
-                  ? 'text-emerald-600 dark:text-emerald-400'
+                  ? 'text-emerald-700 dark:text-emerald-400'
                   : 'text-[#140f1f] dark:text-white'
               }`}
             >
@@ -104,7 +104,7 @@ export function DailyGoalTracker({
           <span
             className={`text-xs font-medium ${
               isGoalReached
-                ? 'text-emerald-600 dark:text-emerald-400'
+                ? 'text-emerald-700 dark:text-emerald-400'
                 : 'text-[#5a5170] dark:text-[#a69cbe]'
             }`}
           >

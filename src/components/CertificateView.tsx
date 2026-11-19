@@ -230,7 +230,7 @@ export function CertificateView({ user, onNavigate }: CertificateViewProps) {
                       className={`w-12 h-12 rounded-xl border flex items-center justify-center ${
                         cert.isUnlocked
                           ? 'bg-violet-600/15 border-violet-500/35 text-violet-700 dark:text-violet-400'
-                          : 'bg-white dark:bg-black border-[#e4ddf5] dark:border-[#26193f] text-[#766b91]'
+                          : 'bg-white dark:bg-black border-[#e4ddf5] dark:border-[#26193f] text-[#5a5170] dark:text-[#a69cbe]'
                       }`}
                     >
                       {cert.isUnlocked ? (
@@ -243,7 +243,7 @@ export function CertificateView({ user, onNavigate }: CertificateViewProps) {
                       className={`text-xs font-mono tabular-nums ${
                         cert.isUnlocked
                           ? 'text-violet-700 dark:text-purple-400 font-semibold'
-                          : 'text-[#766b91]'
+                          : 'text-[#5a5170] dark:text-[#a69cbe]'
                       }`}
                     >
                       {cert.isUnlocked ? 'Unlocked' : cert.progress}
@@ -290,7 +290,7 @@ export function CertificateView({ user, onNavigate }: CertificateViewProps) {
                     <ChevronRight size={16} />
                   </button>
                 ) : (
-                  <div className="w-full py-3.5 px-6 flex items-center justify-center text-xs font-medium text-[#766b91] bg-[#f8f5ff] dark:bg-black/60 border-t border-[#e4ddf5] dark:border-[#26193f]">
+                  <div className="w-full py-3.5 px-6 flex items-center justify-center text-xs font-medium text-[#5a5170] dark:text-[#a69cbe] bg-[#f8f5ff] dark:bg-black/60 border-t border-[#e4ddf5] dark:border-[#26193f]">
                     <Lock size={14} className="mr-2" />
                     <span>Complete target milestone to unlock</span>
                   </div>

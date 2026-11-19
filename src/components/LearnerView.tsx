@@ -104,7 +104,7 @@ export function LearnerView({
           <div className="relative flex-1">
             <Search
               size={18}
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-[#766b91] dark:text-[#867aa3]"
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-[#5a5170] dark:text-[#a69cbe]"
             />
             <input
               type="text"
@@ -112,7 +112,7 @@ export function LearnerView({
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
               placeholder="Search any concept (e.g. Distributed Locks, GraphQL Federation, Kafka)..."
-              className="w-full bg-white dark:bg-black border border-[#e4ddf5] dark:border-[#26193f] rounded-xl py-3 pl-11 pr-4 text-sm text-[#140f1f] dark:text-white placeholder:text-[#766b91] focus:outline-none focus:border-violet-500 transition-colors"
+              className="w-full bg-white dark:bg-black border border-[#e4ddf5] dark:border-[#26193f] rounded-xl py-3 pl-11 pr-4 text-sm text-[#140f1f] dark:text-white placeholder:text-[#5a5170] dark:placeholder:text-[#a69cbe] focus:outline-none focus:border-violet-500 transition-colors"
               onKeyDown={(e) => e.key === 'Enter' && fetchModule(topic)}
             />
           </div>

@@ -175,7 +175,7 @@ export function DashboardView({
                 <div className="flex items-center gap-2 text-sm font-bold text-[#140f1f] dark:text-white">
                   <CheckCircle2
                     size={15}
-                    className="text-emerald-600 dark:text-emerald-400"
+                    className="text-emerald-700 dark:text-emerald-400"
                   />
                   <span>Active Resume: {resume.fileName}</span>
                 </div>
@@ -270,7 +270,7 @@ export function DashboardView({
         <StatCard
           icon={
             <Clock
-              className="text-emerald-600 dark:text-emerald-400"
+              className="text-emerald-700 dark:text-emerald-400"
               size={20}
             />
           }
@@ -307,7 +307,7 @@ export function DashboardView({
             user.scoreHistory.length === 0 ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center border border-dashed border-[#e4ddf5] dark:border-[#26193f] rounded-xl text-[#5a5170] dark:text-[#a69cbe] bg-[#faf8ff] dark:bg-black/50">
                 <Target
-                  className="mb-2 text-violet-500/70 dark:text-violet-400/70"
+                  className="mb-2 text-violet-700 dark:text-violet-400"
                   size={28}
                 />
                 <p className="text-sm font-medium text-[#140f1f] dark:text-white">
@@ -455,7 +455,7 @@ export function DashboardView({
               icon={
                 <BookOpen
                   size={18}
-                  className="text-emerald-600 dark:text-emerald-400"
+                  className="text-emerald-700 dark:text-emerald-400"
                 />
               }
               title="Study Scenarios"

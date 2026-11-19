@@ -819,7 +819,7 @@ export function LiveInterviewView({
             <span
               className={`font-mono text-sm font-semibold tabular-nums ${
                 timeLeft < 300
-                  ? 'text-rose-600 dark:text-rose-400'
+                  ? 'text-rose-700 dark:text-rose-400'
                   : 'text-[#140f1f] dark:text-white'
               }`}
             >
