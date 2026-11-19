@@ -5,6 +5,7 @@ import {
   getCompanyPlaybook,
   getLevelCalibration,
 } from '../lib/interviewPlaybooks';
+import { DifficultyOrchestrator } from '../lib/DifficultyOrchestrator';
 import { consumePrewarmedOpeningTurn } from '../lib/interviewPrewarm';
 import {
   Clock,
@@ -821,6 +822,21 @@ export function LiveInterviewView({
               <span aria-hidden="true">·</span>
               <span>
                 {calibration.tier} ({calibration.yearsDisplay})
+              </span>
+              <span aria-hidden="true">·</span>
+              <span className="font-mono tabular-nums text-violet-700 dark:text-violet-300 font-medium">
+                Tier{' '}
+                {
+                  DifficultyOrchestrator.orchestrate({
+                    company: config.company,
+                    role: config.role,
+                    experienceYears: config.experience,
+                    roundType: config.type,
+                    userDifficulty: config.difficulty,
+                    strictMode,
+                  }).tier
+                }
+                /10
               </span>
               <span aria-hidden="true">·</span>
               <span>{config.difficulty}</span>

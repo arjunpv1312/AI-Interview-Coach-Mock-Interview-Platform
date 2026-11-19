@@ -5,6 +5,7 @@ import {
   getCompanyPlaybook,
   getLevelCalibration,
 } from '../lib/interviewPlaybooks';
+import { DifficultyOrchestrator } from '../lib/DifficultyOrchestrator';
 import { prewarmOpeningTurn, schedulePrewarm } from '../lib/interviewPrewarm';
 import {
   Building2,
@@ -70,6 +71,14 @@ export function SetupView({
 
   const playbook = getCompanyPlaybook(config.company);
   const calibration = getLevelCalibration(config.experience, config.difficulty);
+  const orchestrated = DifficultyOrchestrator.orchestrate({
+    company: config.company,
+    role: config.role,
+    experienceYears: config.experience,
+    roundType: config.type,
+    userDifficulty: config.difficulty,
+    strictMode: Boolean(config.strictMode),
+  });
 
   const readFileAsBase64 = (file: File): Promise<string> =>
     new Promise((resolve, reject) => {
@@ -505,7 +514,8 @@ export function SetupView({
                 <span>Experience Calibration</span>
               </label>
               <span className="font-mono text-violet-700 dark:text-violet-300 tabular-nums">
-                {calibration.yearsDisplay} · {calibration.tier}
+                {calibration.yearsDisplay} · Tier {orchestrated.tier}/10 (
+                {calibration.tier})
               </span>
             </div>
             <input
@@ -587,11 +597,23 @@ export function SetupView({
                   ? playbook.behavioralFramework
                   : playbook.codingStyle}
             </p>
-            <div className="text-[11px] text-[#5a5170] dark:text-[#a69cbe] leading-relaxed border-t border-[#e4ddf5] dark:border-[#26193f] pt-2">
-              <span className="font-semibold text-[#140f1f] dark:text-white">
-                Signature Round:
-              </span>{' '}
-              {playbook.uniqueRound}
+            <div className="text-[11px] text-[#5a5170] dark:text-[#a69cbe] leading-relaxed border-t border-[#e4ddf5] dark:border-[#26193f] pt-2 space-y-1">
+              <div>
+                <span className="font-semibold text-[#140f1f] dark:text-white">
+                  Orchestrated Tier {orchestrated.tier}/10 ({orchestrated.descriptor.label}):
+                </span>{' '}
+                {config.type === 'System Design'
+                  ? orchestrated.descriptor.architecturalDepth
+                  : config.type === 'Behavioural'
+                    ? orchestrated.descriptor.behavioralExpectation
+                    : orchestrated.descriptor.codingExpectation}
+              </div>
+              <div>
+                <span className="font-semibold text-[#140f1f] dark:text-white">
+                  Signature Round:
+                </span>{' '}
+                {playbook.uniqueRound}
+              </div>
             </div>
           </div>
 

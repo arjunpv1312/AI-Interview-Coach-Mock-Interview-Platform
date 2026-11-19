@@ -15,6 +15,7 @@ import {
   getCompanyPlaybook,
   getLevelCalibration,
 } from '../lib/interviewPlaybooks';
+import { DifficultyOrchestrator } from '../lib/DifficultyOrchestrator';
 
 interface SimulationViewProps {
   user?: User | null;
@@ -40,6 +41,12 @@ export function SimulationView({
 
   const playbook = getCompanyPlaybook(config.company);
   const calibration = getLevelCalibration(config.experience, config.difficulty);
+  const orchestrated = DifficultyOrchestrator.orchestrate({
+    company: config.company,
+    role: config.role,
+    experienceYears: config.experience,
+    userDifficulty: config.difficulty,
+  });
 
   const isFormValid = Boolean(config.company && config.role);
 
@@ -165,7 +172,7 @@ export function SimulationView({
                 <span>Experience Calibration</span>
               </label>
               <span className="font-mono tabular-nums text-violet-700 dark:text-violet-300">
-                {calibration.yearsDisplay} · {calibration.tier}
+                {calibration.yearsDisplay} · Tier {orchestrated.tier}/10
               </span>
             </div>
             <input
@@ -220,10 +227,11 @@ export function SimulationView({
 
           <div className="p-3.5 rounded-xl bg-white dark:bg-black border border-[#e4ddf5] dark:border-[#26193f] space-y-1">
             <div className="text-[11px] font-semibold text-violet-700 dark:text-violet-300">
-              {playbook.company} · {playbook.archetype}
+              {playbook.company} · Tier {orchestrated.tier}/10 (
+              {orchestrated.descriptor.label})
             </div>
             <p className="text-[11px] text-[#5a5170] dark:text-[#a69cbe] leading-relaxed">
-              {playbook.uniqueRound}
+              {orchestrated.descriptor.architecturalDepth}
             </p>
           </div>
 

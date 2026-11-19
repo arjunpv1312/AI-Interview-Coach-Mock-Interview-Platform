@@ -5,10 +5,7 @@ import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, Type, ThinkingLevel } from '@google/genai';
 import mammoth from 'mammoth';
 import { apiManager } from './src/lib/ApiManager';
-import {
-  getCompanyPlaybook,
-  getLevelCalibration,
-} from './src/lib/interviewPlaybooks';
+import { DifficultyOrchestrator } from './src/lib/DifficultyOrchestrator';
 
 dns.setDefaultResultOrder('ipv4first');
 
@@ -530,70 +527,42 @@ Generate 4 specific "tailoredAngles" representing sharp, realistic interview que
       const turnNumber =
         history.filter((m: any) => m.role === 'interviewer').length + 1;
 
-      const playbook = getCompanyPlaybook(company);
-      const calibration = getLevelCalibration(Number(experience) || 0, difficulty);
+      const plan = DifficultyOrchestrator.orchestrate({
+        company,
+        role,
+        experienceYears: Number(experience) || 0,
+        roundType: type,
+        userDifficulty: difficulty,
+        strictMode: Boolean(strictMode),
+        focusTopics,
+        hasResume,
+        startWithResume: startWithResume !== false,
+        turnNumber,
+        resumeSummaryBlock: resumeBlock,
+      });
 
-      const roundSpecificFocus =
-        type === 'System Design'
-          ? `SYSTEM DESIGN FOCUS AT ${playbook.company.toUpperCase()}: ${playbook.systemDesignFocus}`
-          : type === 'Behavioural'
-            ? `BEHAVIORAL & CULTURE RUBRIC AT ${playbook.company.toUpperCase()}: ${playbook.behavioralFramework}`
-            : `CODING & TECHNICAL METHOD AT ${playbook.company.toUpperCase()}: ${playbook.codingStyle}`;
-
-      const strictDirective = strictMode
-        ? 'PRINCIPAL BAR-RAISER TOGGLE ACTIVE: Do not praise superficial answers. Challenge vague buzzwords immediately and demand exact trade-offs, bottlenecks, or quantified metrics.'
-        : 'Maintain authentic interviewer demeanor matched to this company’s real pacing profile.';
-
-      const resumeDirective = hasResume
-        ? startWithResume && turnNumber <= 2
-          ? `CRITICAL RESUME STAGE (Turn ${turnNumber}): Anchor your question directly in a specific project, role, or technology from the candidate's resume above, evaluated through ${playbook.company}'s real ${type} lens at ${calibration.titleLabel} expectations.`
-          : `Blend the candidate's actual resume stack and projects with ${playbook.company}'s ${type} pattern for a ${role} at ${calibration.titleLabel} (${calibration.yearsDisplay}).`
-        : `Ask an authentic ${playbook.company} ${type} interview prompt calibrated specifically for ${role} at ${calibration.titleLabel} (${calibration.yearsDisplay}).`;
-
-      let chatPrompt = `You are a seasoned ${type} interviewer at ${playbook.company} conducting a realistic ${playbook.company} interview for "${role}" at ${calibration.titleLabel} (${calibration.yearsDisplay}, Difficulty: ${calibration.difficulty}).
-${focusTopics ? `Custom Focus Areas requested by candidate: ${focusTopics}\n` : ''}
-COMPANY INTERVIEW PLAYBOOK (${playbook.company} — ${playbook.archetype}):
-- Real-World Culture: ${playbook.cultureSummary}
-- Loop Format: ${playbook.roundStructure}
-- ${roundSpecificFocus}
-- Signature Element: ${playbook.uniqueRound}
-- Interviewer Pacing Style: ${playbook.pacingProfile}
-
-LEVEL & DIFFICULTY CALIBRATION (${calibration.tier}, ${calibration.yearsDisplay}, ${calibration.difficulty}):
-- Target Scope: ${calibration.questionScope}
-- Question Complexity Directive: ${calibration.promptDirective}
-- Pacing Rule: ${calibration.pacingDirective}
-${resumeBlock}
-
-Rules:
-1. ${resumeDirective}
-2. ${strictDirective}
-3. Never ask generic one-size-fits-all textbook questions when a ${playbook.company}-authentic framing fits. If difficulty is Easy and experience is 0-1 yrs, ask ONE friendly, clear, foundational question—never overwhelm or rapid-fire multi-part prompts. If experience is 15-25+ yrs or difficulty is Hard, demand Staff/Principal-grade architectural depth, edge cases, and failure trade-offs.
-4. CONVERSATIONAL SPOKEN FORMAT ONLY: Pure plain English text, strictly 1-2 concise natural sentences (under 48 words total). Never use markdown, bullet points, asterisks, stage directions, or code blocks.
-5. Never repeat a question already asked. Adapt directly to the candidate's latest answer.
-
-Conversation so far:
-`;
+      let conversationContents = 'Conversation transcript:\n';
 
       if (history && history.length > 0) {
         history.forEach((msg: any) => {
-          chatPrompt += `${msg.role === 'interviewer' ? 'Interviewer' : 'Candidate'}: ${msg.text}\n`;
+          conversationContents += `${msg.role === 'interviewer' ? 'Interviewer' : 'Candidate'}: ${msg.text}\n`;
         });
       } else {
-        chatPrompt +=
+        conversationContents +=
           hasResume && startWithResume
-            ? `(Start Turn 1 authentically in ${playbook.company}'s style: greet the candidate briefly by name if available, mention one specific project or role from their resume, and ask an appropriately calibrated opening question for ${calibration.yearsDisplay} + ${calibration.difficulty}.)\n`
-            : `(Start Turn 1 authentically in ${playbook.company}'s style: introduce yourself briefly as a ${playbook.company} ${type} interviewer and ask ONE cleanly calibrated opening question for ${calibration.yearsDisplay} + ${calibration.difficulty}.)\n`;
+            ? `(Turn 1 Opening for Tier ${plan.tier}/10 at ${plan.playbook.company}: greet the candidate briefly by name if available, reference one specific project or role from their resume, and ask a calibrated Tier ${plan.tier}/10 opening question for ${plan.calibration.yearsDisplay}.)\n`
+            : `(Turn 1 Opening for Tier ${plan.tier}/10 at ${plan.playbook.company}: briefly introduce yourself as a ${plan.playbook.company} ${type} interviewer and ask ONE opening question strictly matching Tier ${plan.tier}/10 for ${plan.calibration.yearsDisplay}.)\n`;
       }
 
-      chatPrompt += `\nInterviewer:`;
+      conversationContents += '\nInterviewer:';
 
       const startedAt = Date.now();
       const response = await generateContentWithRetry(
         {
           model: 'gemini-3.1-flash-lite',
-          contents: chatPrompt,
+          contents: conversationContents,
           config: {
+            systemInstruction: plan.systemInstruction,
             thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
           },
         },
@@ -604,11 +573,16 @@ Conversation so far:
         throw new Error('Empty response from AI');
       }
 
+      res.setHeader('X-Difficulty-Tier', String(plan.tier));
       res.setHeader(
         'Server-Timing',
         `ai;dur=${Date.now() - startedAt};desc="${response._modelUsed || 'gemini'}-try${(response._attemptIndex ?? 0) + 1}"`
       );
-      res.json({ text: response.text.trim() });
+      res.json({
+        text: response.text.trim(),
+        difficultyTier: plan.tier,
+        tierLabel: plan.tierLabel,
+      });
     } catch (error: any) {
       console.warn('Error getting interaction:', error?.message || 'Error');
       let fallbackText =
@@ -653,24 +627,17 @@ Conversation so far:
         return res.status(500).json({ error: 'Missing Gemini API Key.' });
       }
 
-      const playbook = getCompanyPlaybook(company);
-      const calibration = getLevelCalibration(Number(experience) || 0, difficulty);
+      const plan = DifficultyOrchestrator.orchestrate({
+        company,
+        role,
+        experienceYears: Number(experience) || 0,
+        userDifficulty: difficulty,
+      });
       const resumeBlock = formatResumeContext(resumeProfile);
 
-      const prompt = `You are a real ${playbook.company} hiring lead generating 5 authentic interview questions for a ${role} candidate at ${calibration.titleLabel} (${calibration.yearsDisplay}, Difficulty: ${calibration.difficulty}).
-
-COMPANY PATTERN (${playbook.company} — ${playbook.archetype}):
-- Culture: ${playbook.cultureSummary}
-- Coding Focus: ${playbook.codingStyle}
-- System Design Focus: ${playbook.systemDesignFocus}
-- Behavioral Framework: ${playbook.behavioralFramework}
-- Unique Round: ${playbook.uniqueRound}
-
-LEVEL CALIBRATION:
-- Scope: ${calibration.questionScope}
-- Directive: ${calibration.promptDirective}
+      const prompt = `Generate 5 realistic ${plan.playbook.company} interview questions for a ${role} candidate at Tier ${plan.tier}/10 (${plan.descriptor.label}, ${plan.calibration.yearsDisplay}, Difficulty: ${plan.calibration.difficulty}).
 ${resumeBlock ? `Tailor at least 2 questions directly to the candidate's resume projects and stack below:\n${resumeBlock}` : ''}
-Make sure all 5 questions reflect ${playbook.company}'s real interview culture and match ${calibration.yearsDisplay} (${calibration.difficulty}) realistically—never ask Staff-level distributed questions for 0 yrs/Easy, and never ask trivial textbook questions for 15-25+ yrs/Hard.
+Ensure questions match Tier ${plan.tier}/10 strictly—beginners receive clear foundational prompts while 20–25+ year experts receive deep architectural/strategic challenges.
 Return ONLY a JSON array of 5 strings.`;
 
       const response = await generateContentWithRetry(
@@ -678,6 +645,7 @@ Return ONLY a JSON array of 5 strings.`;
           model: 'gemini-4-hydrogen',
           contents: prompt,
           config: {
+            systemInstruction: plan.simulationSystemInstruction,
             thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
             responseMimeType: 'application/json',
             responseSchema: {
@@ -693,7 +661,11 @@ Return ONLY a JSON array of 5 strings.`;
       try {
         const parsed = JSON.parse(text);
         if (Array.isArray(parsed)) {
-          return res.json({ questions: parsed.slice(0, 5) });
+          return res.json({
+            questions: parsed.slice(0, 5),
+            difficultyTier: plan.tier,
+            tierLabel: plan.tierLabel,
+          });
         }
       } catch {
         // fallback below
@@ -704,7 +676,11 @@ Return ONLY a JSON array of 5 strings.`;
         .filter((l) => l.trim().length > 10)
         .map((l) => l.replace(/^[\d.\-*]\s*/, '').trim())
         .slice(0, 5);
-      res.json({ questions: fallbackQuestions });
+      res.json({
+        questions: fallbackQuestions,
+        difficultyTier: plan.tier,
+        tierLabel: plan.tierLabel,
+      });
     } catch (error: any) {
       console.warn('Gemini Generate Simulation Error:', error?.message);
       res.status(500).json({ error: 'Failed to generate simulation questions.' });
@@ -747,25 +723,22 @@ Return ONLY a JSON array of 5 strings.`;
         });
       }
 
-      const playbook = getCompanyPlaybook(company);
-      const calibration = getLevelCalibration(Number(experience) || 0, difficulty);
+      const plan = DifficultyOrchestrator.orchestrate({
+        company,
+        role,
+        experienceYears: Number(experience) || 0,
+        roundType: type,
+        userDifficulty: difficulty,
+      });
       const resumeBlock = formatResumeContext(resumeProfile);
 
-      let evalPrompt = `Analyze this ${type} interview transcript for a ${role} position at ${playbook.company} (${calibration.titleLabel}, ${calibration.yearsDisplay}, Difficulty: ${calibration.difficulty}).
-
-COMPANY GRADING RUBRIC (${playbook.company}):
-- Culture & Framework: ${playbook.cultureSummary}
-- Behavioral Bar: ${playbook.behavioralFramework}
-- Company Red Flags to penalize if present: ${playbook.rubricRedFlags.join(' | ')}
-
-LEVEL & DIFFICULTY BAR (${calibration.tier}, ${calibration.difficulty}):
-- ${calibration.evaluationBar}
+      let evalPrompt = `Analyze this ${type} interview transcript for "${role}" at ${plan.playbook.company} evaluated under Tier ${plan.tier}/10 (${plan.descriptor.label}, ${plan.calibration.yearsDisplay}, Difficulty: ${plan.calibration.difficulty}).
 ${resumeBlock}
 
-Evaluate the candidate objectively against ${playbook.company}'s real hiring bar for ${calibration.yearsDisplay} (${calibration.difficulty}). Produce:
-1. A realistic overallScore (0-100) and crackProbability ("Highly Likely", "Possible", or "Needs Work").
-2. Five numeric skillScores (0-100 each): technicalDepth, resumeAlignment, systemArchitecture, communication, problemSolving.
-3. questionReviews: For each interviewer question + candidate answer pair in the transcript, provide rating (0-100), verdict ("Strong", "Partial", or "Needs Depth"), concise actionable feedback, and a concise idealAnswer demonstrating how a top 1% candidate at ${playbook.company} (${calibration.yearsDisplay}) would answer.
+Evaluate objectively and produce:
+1. overallScore (0-100) and crackProbability ("Highly Likely", "Possible", or "Needs Work").
+2. Five numeric skillScores (0-100): technicalDepth, resumeAlignment, systemArchitecture, communication, problemSolving.
+3. questionReviews: For each interviewer question + candidate answer pair in the transcript, provide rating (0-100), verdict ("Strong", "Partial", or "Needs Depth"), concise actionable feedback, and a concise idealAnswer fitting a top 1% Tier ${plan.tier}/10 candidate at ${plan.playbook.company}.
 4. Concise overallSummary, speakingSkills, technicalSkills, deepDive, 3-5 improvements, and 3-4 studyTopics.
 
 Transcript:
@@ -780,6 +753,7 @@ Transcript:
           model: 'gemini-4-hydrogen',
           contents: evalPrompt,
           config: {
+            systemInstruction: plan.evaluationSystemInstruction,
             thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
             responseMimeType: 'application/json',
           responseSchema: {

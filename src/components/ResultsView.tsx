@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { InterviewSession, QuestionReview, SkillScores } from '../types';
+import { DifficultyOrchestrator } from '../lib/DifficultyOrchestrator';
 import {
   RefreshCcw,
   Target,
@@ -394,6 +395,20 @@ export function ResultsView({
                   </span>
                 </>
               )}
+              <span aria-hidden="true">·</span>
+              <span className="font-mono tabular-nums text-violet-700 dark:text-violet-300 font-medium">
+                Tier{' '}
+                {
+                  DifficultyOrchestrator.orchestrate({
+                    company: session.company,
+                    role: session.role,
+                    experienceYears: session.experience ?? 3,
+                    roundType: session.type,
+                    userDifficulty: session.difficulty,
+                  }).tier
+                }
+                /10
+              </span>
               <span aria-hidden="true">·</span>
               <span>{session.difficulty}</span>
               {session.resumeProfile && (
