@@ -92,8 +92,7 @@ export function PublicCertificateView() {
             Verified Achievement
           </h1>
           <p className="text-sm text-[#5a5170] dark:text-[#a69cbe]">
-            Earned through structured technical mock practice on Interview
-            Copilot Pro.
+            Earned through structured technical mock practice on InterviewCoach.
           </p>
         </div>
 
@@ -154,7 +153,7 @@ export function PublicCertificateView() {
                     Issued By
                   </p>
                   <div className="text-lg text-violet-700 dark:text-violet-300 font-bold border-b border-[#e4ddf5] dark:border-[#26193f] pb-1">
-                    Interview Copilot Pro
+                    InterviewCoach
                   </div>
                 </div>
               </div>
@@ -168,7 +167,7 @@ export function PublicCertificateView() {
             onClick={() => (window.location.href = '/')}
             className="px-5 py-3 rounded-xl bg-[#faf8ff] dark:bg-[#08050f] hover:bg-[#f2ecfc] dark:hover:bg-[#120b24] text-[#140f1f] dark:text-[#d8d0ea] text-xs font-semibold transition-colors border border-[#e4ddf5] dark:border-[#26193f] cursor-pointer"
           >
-            Open Interview Copilot
+            Open InterviewCoach
           </button>
           <button
             type="button"

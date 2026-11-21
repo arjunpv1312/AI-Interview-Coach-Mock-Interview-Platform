@@ -103,6 +103,30 @@ html {
     --accent-glow: rgba(109, 40, 217, 0.34);
   }
 
+  /* Theme Variant 5: 5026 Photonic Violet */
+  [data-theme='horizon-photonic'] {
+    --accent-primary: #7c3aed;
+    --accent-secondary: #c026d3;
+    --accent-glow: rgba(192, 38, 211, 0.34);
+  }
+  :root:not(.dark)[data-theme='horizon-photonic'] {
+    --accent-primary: #6d28d9;
+    --accent-secondary: #a21caf;
+    --accent-glow: rgba(162, 28, 175, 0.24);
+  }
+
+  /* Theme Variant 6: 5026 Chronos Ultraviolet */
+  [data-theme='horizon-chronos'] {
+    --accent-primary: #4c1d95;
+    --accent-secondary: #9333ea;
+    --accent-glow: rgba(147, 51, 234, 0.38);
+  }
+  :root:not(.dark)[data-theme='horizon-chronos'] {
+    --accent-primary: #4c1d95;
+    --accent-secondary: #7e22ce;
+    --accent-glow: rgba(126, 34, 206, 0.24);
+  }
+
   body {
     background-color: var(--canvas-bg);
     color: var(--canvas-fg);
@@ -128,6 +152,20 @@ html {
   }
 }
 
+@keyframes vaultScanSweep {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  35% {
+    opacity: 0.65;
+  }
+  100% {
+    transform: translateY(220%);
+    opacity: 0;
+  }
+}
+
 @layer utilities {
   .tabular-nums {
     font-variant-numeric: tabular-nums;
@@ -135,6 +173,15 @@ html {
   .amoled-surface {
     background-color: var(--surface-bg);
     border: 1px solid var(--surface-border);
+    transition: border-color 180ms cubic-bezier(0.16, 1, 0.3, 1),
+      transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .kinetic-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--accent-secondary);
+  }
+  .vault-scan-line {
+    animation: vaultScanSweep 2.8s cubic-bezier(0.16, 1, 0.3, 1) infinite;
   }
   .amoled-btn-primary {
     background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);

@@ -15,6 +15,7 @@ import {
   INACTIVITY_LOCK_TIMEOUT_MS,
   clearVaultSession,
   consumeInactivityLockFlag,
+  generateSecureId,
   getVaultSession,
   getVaultUser,
   initializeVault,
@@ -34,6 +35,7 @@ import { SimulationView } from './components/SimulationView';
 import { CertificateView } from './components/CertificateView';
 import { SuggestionsView } from './components/SuggestionsView';
 import { LearnerView } from './components/LearnerView';
+import { HorizonLabView } from './components/HorizonLabView';
 import { SecurityView } from './components/SecurityView';
 import { PublicCertificateView } from './components/PublicCertificateView';
 import { GuideModal } from './components/GuideModal';
@@ -333,7 +335,7 @@ export default function App() {
   ) => {
     if (!sessionParams) return;
     const session: InterviewSession = {
-      id: Math.random().toString(36).slice(2, 11),
+      id: generateSecureId('sess'),
       userId: user?.id || 'anon',
       company: sessionParams.company,
       role: sessionParams.role,
@@ -361,12 +363,15 @@ export default function App() {
     { id: 'amethyst', label: 'Deep Amethyst', swatch: 'bg-purple-500' },
     { id: 'orchid', label: 'Velvet Orchid', swatch: 'bg-fuchsia-500' },
     { id: 'carbon-plum', label: 'Carbon Plum', swatch: 'bg-violet-800' },
+    { id: 'horizon-photonic', label: '5026 Photonic', swatch: 'bg-fuchsia-600' },
+    { id: 'horizon-chronos', label: '5026 Chronos', swatch: 'bg-purple-800' },
   ];
 
   const navItems: { id: ViewState; label: string }[] = [
     { id: 'dashboard', label: 'Dashboard' },
-    { id: 'setup', label: 'New Session' },
-    { id: 'bank', label: 'Study Bank' },
+    { id: 'setup', label: 'Practice' },
+    { id: 'horizon', label: '5026 Lab' },
+    { id: 'bank', label: 'Bank' },
     { id: 'history', label: 'History' },
     { id: 'suggestions', label: 'Insights' },
   ];
@@ -412,7 +417,7 @@ export default function App() {
                 <Logo />
               </div>
               <span className="font-bold text-base tracking-tight text-[#140f1f] dark:text-white">
-                Interview Copilot
+                InterviewCoach
               </span>
             </button>
 
@@ -940,6 +945,21 @@ export default function App() {
               />
             </motion.div>
           )}
+          {view === 'horizon' && user && (
+            <motion.div
+              key="horizon"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={pageTransition}
+            >
+              <HorizonLabView
+                user={user}
+                onNavigate={setView}
+                onLaunchTrack={launchSetupWithPrefill}
+              />
+            </motion.div>
+          )}
           {view === 'security' && user && (
             <motion.div
               key="security"
@@ -1009,7 +1029,7 @@ export default function App() {
               </a>
             </div>
             <div className="text-xs text-[#5a5170] dark:text-[#a69cbe]">
-              Created by Arjun PV · Interview Copilot Pro · AES-256-GCM Encrypted
+              Created by Arjun PV · InterviewCoach · AES-256-GCM Encrypted
             </div>
           </div>
         </footer>

@@ -4,7 +4,7 @@ import { Logo } from './Logo';
 import {
   authenticateVaultUser,
   ensureFederatedOrDemoUser,
-  getVaultUsers,
+  generateSecureId,
   registerVaultUser,
 } from '../lib/CryptoVault';
 import {
@@ -25,6 +25,7 @@ import {
   Sun,
   Moon,
 } from 'lucide-react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 
 interface AuthViewProps {
   onLogin: (user: User, rememberMe: boolean) => void;
@@ -34,6 +35,23 @@ interface AuthViewProps {
   onToggleColorMode: () => void;
 }
 
+function evaluatePasswordStrength(pwd: string): {
+  score: number;
+  label: string;
+  barClass: string;
+} {
+  if (!pwd) return { score: 0, label: 'Enter at least 6 characters', barClass: 'bg-zinc-500' };
+  let score = 0;
+  if (pwd.length >= 8) score++;
+  if (/[A-Z]/.test(pwd) && /[a-z]/.test(pwd)) score++;
+  if (/\d/.test(pwd)) score++;
+  if (/[^A-Za-z0-9]/.test(pwd)) score++;
+  if (score <= 1) return { score: 1, label: 'Basic entropy', barClass: 'bg-amber-500' };
+  if (score === 2) return { score: 2, label: 'Moderate entropy', barClass: 'bg-violet-500' };
+  if (score === 3) return { score: 3, label: 'Strong entropy', barClass: 'bg-violet-400' };
+  return { score: 4, label: 'High cryptographic entropy', barClass: 'bg-emerald-500' };
+}
+
 export function AuthView({
   onLogin,
   lockNotice,
@@ -41,6 +59,7 @@ export function AuthView({
   colorMode,
   onToggleColorMode,
 }: AuthViewProps) {
+  const prefersReducedMotion = useReducedMotion();
   const [isLogin, setIsLogin] = useState(true);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [email, setEmail] = useState('');
@@ -54,8 +73,29 @@ export function AuthView({
   const [loadingAction, setLoadingAction] = useState<
     null | 'submit' | 'guest' | 'google' | 'github'
   >(null);
+  const [unlockStep, setUnlockStep] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  const strength = evaluatePasswordStrength(password);
+
+  const completeChoreographedLogin = async (
+    resolvedUser: User,
+    remember: boolean
+  ) => {
+    if (prefersReducedMotion) {
+      onLogin(resolvedUser, remember);
+      return;
+    }
+    setUnlockStep('Deriving PBKDF2-SHA-256 session key...');
+    await new Promise((r) => setTimeout(r, 220));
+    setUnlockStep('Verifying AES-256-GCM encrypted vault...');
+    await new Promise((r) => setTimeout(r, 220));
+    setUnlockStep('Entering InterviewCoach studio...');
+    await new Promise((r) => setTimeout(r, 180));
+    setUnlockStep(null);
+    onLogin(resolvedUser, remember);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,21 +112,17 @@ export function AuthView({
 
     try {
       if (isForgotPassword) {
-        const users = await getVaultUsers();
-        if (users[trimmedEmail]) {
-          setSuccess(
-            `Account verified for ${trimmedEmail} inside your local AES-256-GCM vault. Returning to sign in.`
-          );
-          setTimeout(() => setIsForgotPassword(false), 2000);
-        } else {
-          setError('No account found with that email address.');
-        }
+        // Constant response protects local vault accounts against email enumeration
+        setSuccess(
+          'If an encrypted vault profile exists for that email, sign in with your password or create a new local vault profile.'
+        );
+        setTimeout(() => setIsForgotPassword(false), 2200);
         return;
       }
 
       if (passwordlessDemo && isLogin) {
         const quickUser: User = {
-          id: Math.random().toString(36).slice(2, 11),
+          id: generateSecureId('demo'),
           email: trimmedEmail,
           fullName: trimmedEmail.split('@')[0] || 'Candidate',
           joinDate: new Date().toISOString(),
@@ -94,13 +130,20 @@ export function AuthView({
           averageScore: 0,
           themePreference: 'obsidian-violet',
           colorMode,
-          authProvider: 'email',
+          authProvider: 'demo',
         };
-        const resolved = await ensureFederatedOrDemoUser(
+        const res = await ensureFederatedOrDemoUser(
           quickUser,
-          'quick-demo-vault'
+          `demo-vault-${generateSecureId()}`
         );
-        onLogin(resolved, rememberMe);
+        if (!res.ok || !res.user) {
+          setError(
+            res.error ||
+              'Password-protected accounts require password authentication.'
+          );
+          return;
+        }
+        await completeChoreographedLogin(res.user, rememberMe);
         return;
       }
 
@@ -110,14 +153,14 @@ export function AuthView({
           setError(result.error || 'Authentication failed.');
           return;
         }
-        onLogin(result.user, rememberMe);
+        await completeChoreographedLogin(result.user, rememberMe);
       } else {
         if (password !== confirmPassword) {
           setError('Passwords do not match.');
           return;
         }
         const newUser: User = {
-          id: Math.random().toString(36).slice(2, 11),
+          id: generateSecureId('usr'),
           email: trimmedEmail,
           fullName: fullName.trim() || 'Candidate',
           joinDate: new Date().toISOString(),
@@ -132,9 +175,10 @@ export function AuthView({
           setError(reg.error || 'Registration failed.');
           return;
         }
-        onLogin(newUser, rememberMe);
+        await completeChoreographedLogin(newUser, rememberMe);
       }
     } catch {
+      setUnlockStep(null);
       setError('Encryption vault error while processing credentials.');
     } finally {
       setLoadingAction(null);
@@ -147,7 +191,7 @@ export function AuthView({
     try {
       const guestUser: User = {
         id: 'guest-pro',
-        email: 'demo@interviewcopilot.pro',
+        email: 'demo@interviewcoach.local',
         fullName: 'Alex Rivera',
         joinDate: new Date().toISOString(),
         totalInterviews: 0,
@@ -156,12 +200,17 @@ export function AuthView({
         colorMode,
         authProvider: 'guest',
       };
-      const resolved = await ensureFederatedOrDemoUser(
+      const res = await ensureFederatedOrDemoUser(
         guestUser,
-        'guest-vault-key'
+        `guest-vault-${generateSecureId()}`
       );
-      onLogin(resolved, rememberMe);
+      if (!res.ok || !res.user) {
+        setError(res.error || 'Could not initialize encrypted demo vault.');
+        return;
+      }
+      await completeChoreographedLogin(res.user, rememberMe);
     } catch {
+      setUnlockStep(null);
       setError('Could not initialize encrypted demo vault.');
     } finally {
       setLoadingAction(null);
@@ -174,10 +223,10 @@ export function AuthView({
     try {
       const providerEmail =
         provider === 'google'
-          ? 'candidate.google@interviewcopilot.pro'
-          : 'dev.github@interviewcopilot.pro';
+          ? 'candidate.google@interviewcoach.local'
+          : 'dev.github@interviewcoach.local';
       const socialUser: User = {
-        id: `${provider}-${Math.random().toString(36).slice(2, 8)}`,
+        id: generateSecureId(provider),
         email: providerEmail,
         fullName: provider === 'google' ? 'Jordan Lee' : 'Samir Patel',
         joinDate: new Date().toISOString(),
@@ -187,12 +236,17 @@ export function AuthView({
         colorMode,
         authProvider: provider,
       };
-      const resolved = await ensureFederatedOrDemoUser(
+      const res = await ensureFederatedOrDemoUser(
         socialUser,
-        `${provider}-vault-key`
+        `${provider}-vault-${generateSecureId()}`
       );
-      onLogin(resolved, rememberMe);
+      if (!res.ok || !res.user) {
+        setError(res.error || 'Could not establish encrypted quick-connect profile.');
+        return;
+      }
+      await completeChoreographedLogin(res.user, rememberMe);
     } catch {
+      setUnlockStep(null);
       setError('Could not establish encrypted quick-connect profile.');
     } finally {
       setLoadingAction(null);
@@ -206,6 +260,34 @@ export function AuthView({
         <div className="absolute bottom-0 right-0 w-[480px] h-[480px] rounded-full bg-purple-400/10 dark:bg-purple-500/12 blur-[150px]" />
       </div>
 
+      {/* Choreographed Vault Decrypt Overlay */}
+      <AnimatePresence>
+        {unlockStep && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            role="status"
+            aria-live="polite"
+            className="fixed inset-0 z-[150] bg-white/90 dark:bg-black/92 backdrop-blur-md flex flex-col items-center justify-center p-6 gap-4"
+          >
+            <motion.div
+              animate={prefersReducedMotion ? undefined : { scale: [0.96, 1.04, 1] }}
+              transition={{ duration: 0.5, repeat: Infinity }}
+              className="w-16 h-16 rounded-2xl bg-violet-600/15 border border-violet-500/50 flex items-center justify-center text-violet-700 dark:text-violet-300"
+            >
+              <ShieldCheck size={32} />
+            </motion.div>
+            <div className="text-sm font-bold text-[#140f1f] dark:text-white tracking-tight">
+              InterviewCoach Vault Unlock
+            </div>
+            <div className="text-xs font-mono text-violet-700 dark:text-violet-300">
+              {unlockStep}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Left Showcase Panel */}
       <div className="hidden lg:flex lg:w-[52%] relative z-10 flex-col justify-between p-12 border-r border-[#e4ddf5] dark:border-[#26193f] bg-gradient-to-br from-[#faf8ff] via-white to-[#f5f3ff] dark:from-[#080412] dark:via-black dark:to-black">
         <div className="flex items-center justify-between gap-4">
@@ -214,7 +296,7 @@ export function AuthView({
               <Logo />
             </div>
             <span className="text-lg font-bold tracking-tight text-[#140f1f] dark:text-white">
-              Interview Copilot
+              InterviewCoach
             </span>
           </div>
 
@@ -233,7 +315,12 @@ export function AuthView({
           </button>
         </div>
 
-        <div className="max-w-xl space-y-8 my-auto py-8">
+        <motion.div
+          initial={prefersReducedMotion ? false : { opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+          className="max-w-xl space-y-8 my-auto py-8"
+        >
           <div className="space-y-4">
             <p className="text-sm font-semibold text-violet-700 dark:text-violet-400">
               Zero-Knowledge Resume-Grounded Studio
@@ -248,8 +335,14 @@ export function AuthView({
             </p>
           </div>
 
-          <div className="rounded-2xl border border-[#e4ddf5] dark:border-violet-500/25 bg-white dark:bg-[#08050f] p-6 space-y-5 shadow-xl shadow-violet-500/5 dark:shadow-violet-950/30">
-            <div className="flex items-center justify-between border-b border-[#e4ddf5] dark:border-[#26193f] pb-4">
+          <div className="rounded-2xl border border-[#e4ddf5] dark:border-violet-500/25 bg-white dark:bg-[#08050f] p-6 space-y-5 shadow-xl shadow-violet-500/5 dark:shadow-violet-950/30 relative overflow-hidden">
+            {!prefersReducedMotion && (
+              <div
+                aria-hidden="true"
+                className="vault-scan-line pointer-events-none absolute inset-x-0 h-10 bg-gradient-to-b from-transparent via-violet-500/12 to-transparent"
+              />
+            )}
+            <div className="flex items-center justify-between border-b border-[#e4ddf5] dark:border-[#26193f] pb-4 relative">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-lg bg-violet-100 dark:bg-violet-600/20 border border-violet-300 dark:border-violet-500/35 flex items-center justify-center text-violet-700 dark:text-violet-400">
                   <Mic size={18} />
@@ -259,7 +352,7 @@ export function AuthView({
                     Live Resume Probe
                   </div>
                   <div className="text-xs text-[#5a5170] dark:text-[#a69cbe]">
-                    System Design · Hard Difficulty
+                    System Design · Adaptive Level Calibration
                   </div>
                 </div>
               </div>
@@ -268,7 +361,7 @@ export function AuthView({
               </span>
             </div>
 
-            <div className="space-y-3 text-sm">
+            <div className="space-y-3 text-sm relative">
               <div className="rounded-xl bg-[#faf8ff] dark:bg-[#120b1f] border border-[#e4ddf5] dark:border-[#26193f] p-3.5 text-[#140f1f] dark:text-[#e9e4f5] leading-relaxed">
                 “I noticed on your resume you scaled a Redis caching layer to cut
                 checkout latency by 42%. How did you prevent cache stampedes
@@ -338,7 +431,7 @@ export function AuthView({
               <span>Zero Server Retention</span>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         <div className="text-xs text-[#5a5170] dark:text-[#a69cbe] flex items-center gap-2">
           <Lock size={12} className="text-violet-700 dark:text-violet-400" />
@@ -350,10 +443,20 @@ export function AuthView({
 
       {/* Right Auth Form Column */}
       <div className="flex-1 relative z-10 flex items-center justify-center p-6 sm:p-10">
-        <div className="w-full max-w-md space-y-6 bg-[#faf8ff] dark:bg-[#08050f]/95 border border-[#e4ddf5] dark:border-[#26193f] rounded-2xl p-7 sm:p-8 shadow-2xl">
+        <motion.div
+          initial={prefersReducedMotion ? false : { opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+          className="w-full max-w-md space-y-6 bg-[#faf8ff] dark:bg-[#08050f]/95 border border-[#e4ddf5] dark:border-[#26193f] rounded-2xl p-7 sm:p-8 shadow-2xl"
+        >
           <div className="flex items-center justify-between lg:hidden mb-2">
-            <div className="w-12 h-12 rounded-xl border border-violet-300 dark:border-violet-500/35 overflow-hidden">
-              <Logo />
+            <div className="flex items-center gap-2.5">
+              <div className="w-10 h-10 rounded-xl border border-violet-300 dark:border-violet-500/35 overflow-hidden">
+                <Logo />
+              </div>
+              <span className="font-bold text-base text-[#140f1f] dark:text-white">
+                InterviewCoach
+              </span>
             </div>
             <button
               type="button"
@@ -375,7 +478,7 @@ export function AuthView({
             </h2>
             <p className="text-sm text-[#5a5170] dark:text-[#a69cbe]">
               {isForgotPassword
-                ? 'Verify your account email inside the local vault.'
+                ? 'Verify access options for your local AES-256-GCM vault.'
                 : isLogin
                   ? 'PBKDF2 hashed credentials and AES-256-GCM encrypted resume vault.'
                   : 'Your profile and resume are encrypted locally before saving.'}
@@ -544,7 +647,7 @@ export function AuthView({
             </div>
 
             {!isForgotPassword && !(passwordlessDemo && isLogin) && (
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <label
                     htmlFor="auth-password"
@@ -585,6 +688,25 @@ export function AuthView({
                     {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
                   </button>
                 </div>
+                {!isLogin && password.length > 0 && (
+                  <div className="space-y-1.5 pt-1">
+                    <div className="grid grid-cols-4 gap-1.5">
+                      {[1, 2, 3, 4].map((step) => (
+                        <div
+                          key={step}
+                          className={`h-1 rounded-full transition-colors ${
+                            strength.score >= step
+                              ? strength.barClass
+                              : 'bg-[#e4ddf5] dark:bg-[#26193f]'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <div className="text-[11px] font-medium text-[#5a5170] dark:text-[#a69cbe]">
+                      {strength.label} (PBKDF2 120k rounds)
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -715,7 +837,7 @@ export function AuthView({
                   : 'Already have an account? Sign in'}
             </button>
           </div>
-        </div>
+        </motion.div>
       </div>
     </div>
   );

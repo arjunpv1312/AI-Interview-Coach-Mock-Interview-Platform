@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { User, ScheduledSession } from '../types';
 import { COMPANIES, ROLES } from '../data';
+import { generateSecureId } from '../lib/CryptoVault';
 
 interface CalendarWidgetProps {
   user: User;
@@ -71,7 +72,7 @@ export function CalendarWidget({
     e.preventDefault();
     const isoDate = `${selectedDateStr}T${newTime}:00`;
     const newSession: ScheduledSession = {
-      id: Math.random().toString(36).slice(2, 10),
+      id: generateSecureId('sched'),
       date: isoDate,
       company: newCompany,
       role: newRole,

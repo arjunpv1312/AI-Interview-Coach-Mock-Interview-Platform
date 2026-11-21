@@ -69,6 +69,8 @@ export type ThemeVariant =
   | 'amethyst'
   | 'orchid'
   | 'carbon-plum'
+  | 'horizon-photonic'
+  | 'horizon-chronos'
   | 'amoled'
   | 'cobalt'
   | 'cyan'
@@ -97,7 +99,7 @@ export interface User {
   themePreference?: ThemeVariant;
   colorMode?: ColorMode;
   resumeProfile?: ResumeProfile | null;
-  authProvider?: 'email' | 'google' | 'github' | 'guest';
+  authProvider?: 'email' | 'google' | 'github' | 'guest' | 'demo';
   bookmarkedQuestionIds?: string[];
 }
 
@@ -179,5 +181,6 @@ export type ViewState =
   | 'certificate'
   | 'suggestions'
   | 'learner'
+  | 'horizon'
   | 'security'
   | 'public-cert';

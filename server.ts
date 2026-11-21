@@ -1,4 +1,5 @@
 import dns from 'node:dns';
+import { randomUUID } from 'node:crypto';
 import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
@@ -29,7 +30,9 @@ function getCachedAiClient(apiKey: string): GoogleGenAI {
 
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX_REQUESTS = 60;
+const MAX_RATE_MAP_SIZE = 5000;
 const ipRateMap = new Map<string, { count: number; resetAt: number }>();
+const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
 function sanitizeString(input: string): string {
   return input
@@ -49,6 +52,9 @@ function sanitizePayload(value: any, skipKeys = new Set(['base64Data'])): any {
   if (value && typeof value === 'object') {
     const out: Record<string, any> = {};
     for (const [k, v] of Object.entries(value)) {
+      if (DANGEROUS_KEYS.has(k)) {
+        continue;
+      }
       if (skipKeys.has(k)) {
         out[k] = v;
       } else {
@@ -270,6 +276,15 @@ async function startServer() {
 
     const ip = req.ip || req.socket.remoteAddress || 'unknown';
     const now = Date.now();
+    if (ipRateMap.size >= MAX_RATE_MAP_SIZE) {
+      for (const [key, val] of ipRateMap.entries()) {
+        if (now > val.resetAt) ipRateMap.delete(key);
+      }
+      if (ipRateMap.size >= MAX_RATE_MAP_SIZE) {
+        const oldestKey = ipRateMap.keys().next().value;
+        if (oldestKey) ipRateMap.delete(oldestKey);
+      }
+    }
     let entry = ipRateMap.get(ip);
     if (!entry || now > entry.resetAt) {
       entry = { count: 0, resetAt: now + RATE_LIMIT_WINDOW_MS };
@@ -463,7 +478,7 @@ Generate 4 specific "tailoredAngles" representing sharp, realistic interview que
 
       res.json({
         profile: {
-          id: Math.random().toString(36).slice(2, 11),
+          id: randomUUID().replace(/-/g, '').slice(0, 12),
           fileName: fileName || 'resume',
           uploadedAt: new Date().toISOString(),
           candidateName: parsed.candidateName || 'Candidate',
@@ -981,6 +996,99 @@ Respond ONLY in JSON format:
     } catch (err: any) {
       console.warn('Learner error', err?.message);
       res.status(500).json({ error: 'Failed to generate learning module.' });
+    }
+  });
+
+  app.post('/api/horizon-research', async (req, res) => {
+    try {
+      const { domainTopic } = req.body;
+      const cleanTopic =
+        typeof domainTopic === 'string' && domainTopic.trim()
+          ? domainTopic.trim().slice(0, 120)
+          : 'Ephemeral Semantic Web Applications & Self-Healing Algorithms in Year 5026';
+
+      const apiKey = apiManager.getCurrentKey();
+      if (!apiKey) {
+        return res.status(500).json({ error: 'Missing Gemini API Key.' });
+      }
+
+      const prompt = `You are a Principal Computer Science & Future Systems Researcher projecting computing 3,000 years into the future (Year 5026) from grounded 2026 physics and computer science first principles.
+Synthesize a deep research dossier on: "${cleanTopic}".
+
+Analyze concrete architectural shifts from naive brute-force approaches -> optimal 2026 engineering -> Year 5026 post-silicon computing:
+1. eraTitle: Concise technical title for the Year 5026 paradigm
+2. substrateShift: How physical compute, energy (Landauer limit), and memory operate in 5026
+3. algorithmBreakthrough: How algorithms eliminate brute force via proof-carrying code, sub-linear indexing, and self-healing invariants
+4. applicationForm: What a "website" or "application" looks like after 3,000 years (ephemeral semantic surfaces vs static apps)
+5. humanAiSymbiosis: How human engineers and autonomous AI meshes collaborate
+6. paradigmComparisons: Array of 3 objects with keys "dimension", "naive2026", "optimal2026", "horizon5026"
+7. frontierInterviewQuestions: Array of 3 deep architectural interview questions testing these concepts, each with "question", "testsConcept", and "tierHint"
+
+Return ONLY valid JSON matching this schema.`;
+
+      const response = await generateContentWithRetry(
+        {
+          model: 'gemini-4-hydrogen',
+          contents: prompt,
+          config: {
+            thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+            responseMimeType: 'application/json',
+          },
+        },
+        15000
+      );
+
+      const fallback = {
+        eraTitle: `Year 5026 Projection · ${cleanTopic}`,
+        substrateShift:
+          'Computation approaches reversible thermodynamic limits on optical-topological lattices, eliminating thermal bottlenecks of 21st-century silicon.',
+        algorithmBreakthrough:
+          'Intent specifications compile directly into formally verified proof-carrying execution graphs, replacing runtime brute-force search and regression suites.',
+        applicationForm:
+          'Static websites dissolve into ephemeral, zero-latency semantic projections assembled instantaneously around user intent and local cryptographic sovereignty.',
+        humanAiSymbiosis:
+          'Engineers act as invariant custodians and ethical boundary architects while self-healing AI meshes optimize routing, consensus, and fault containment autonomously.',
+        paradigmComparisons: [
+          {
+            dimension: 'Complexity & Verification',
+            naive2026: 'Brute-force scans & manual test suites',
+            optimal2026: 'Indexed O(log N) structures & typed invariants',
+            horizon5026: 'Zero-knowledge proof-carrying intent graphs',
+          },
+          {
+            dimension: 'Interface Lifecycle',
+            naive2026: 'Static bundled pages & client polling',
+            optimal2026: 'Reactive edge-streamed components',
+            horizon5026: 'Ephemeral semantic synthesis on demand',
+          },
+          {
+            dimension: 'Fault Tolerance',
+            naive2026: 'Manual incident paging & restarts',
+            optimal2026: 'Circuit breakers & multi-region failover',
+            horizon5026: 'Autonomous topological self-healing meshes',
+          },
+        ],
+        frontierInterviewQuestions: [
+          {
+            question:
+              'If runtime latency approaches physical light-speed limits across planetary nodes, how do you design an intent-compiled system that preserves linearizability without blocking local user sovereignty?',
+            testsConcept: 'Locality-First Consensus & Speculative Proof Graphs',
+            tierHint: 'Tier 9–10 · Principal / Distinguished Architect',
+          },
+          {
+            question:
+              'When interfaces are synthesized ephemerally per user intent rather than shipped as fixed codebases, how do you enforce deterministic accessibility, WCAG legibility, and zero-trust data boundaries?',
+            testsConcept: 'Invariant-Bounded Generative UI Governance',
+            tierHint: 'Tier 7–8 · Staff Systems Architect',
+          },
+        ],
+      };
+
+      const parsed = safeJsonParse(response?.text || '', fallback);
+      res.json({ ...fallback, ...parsed });
+    } catch (err: any) {
+      console.warn('Horizon research error:', err?.message);
+      res.status(500).json({ error: 'Unable to synthesize Year 5026 dossier.' });
     }
   });
 

@@ -97,6 +97,14 @@ export function LearnerView({
             </p>
           </div>
         </div>
+        <button
+          type="button"
+          onClick={() => onNavigate('horizon')}
+          className="px-4 py-2.5 rounded-xl bg-white dark:bg-black border border-[#e4ddf5] dark:border-[#26193f] hover:border-violet-500 text-xs font-semibold text-violet-700 dark:text-violet-300 flex items-center gap-2 self-start md:self-auto cursor-pointer whitespace-nowrap"
+        >
+          <Sparkles size={14} />
+          <span>Explore Year 5026 Horizon Lab</span>
+        </button>
       </div>
 
       <div className="amoled-surface rounded-2xl p-5 space-y-4">

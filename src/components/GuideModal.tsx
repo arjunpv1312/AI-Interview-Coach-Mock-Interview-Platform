@@ -186,6 +186,13 @@ export function GuideModal({
                 >
                   Open Study Bank
                 </button>
+                <button
+                  type="button"
+                  onClick={() => jumpTo('horizon')}
+                  className="px-4 py-2 rounded-xl border border-[#e4ddf5] dark:border-[#26193f] bg-white dark:bg-black text-violet-700 dark:text-violet-300 text-xs font-semibold hover:border-violet-500 cursor-pointer"
+                >
+                  Open Year 5026 Horizon Lab
+                </button>
               </div>
             </div>
           )}

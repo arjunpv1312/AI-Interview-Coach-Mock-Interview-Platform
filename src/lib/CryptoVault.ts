@@ -59,12 +59,28 @@ let inMemoryFallbackKey: CryptoKey | null = null;
 let keyStoredInIdb = false;
 let lastSessionExpiredByInactivity = false;
 
-function bytesToBase64(bytes: Uint8Array): string {
-  let binary = '';
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
+export function generateSecureId(prefix = ''): string {
+  let core: string;
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    core = crypto.randomUUID().replace(/-/g, '').slice(0, 12);
+  } else if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    const arr = new Uint8Array(6);
+    crypto.getRandomValues(arr);
+    core = Array.from(arr, (b) => b.toString(16).padStart(2, '0')).join('');
+  } else {
+    core = Date.now().toString(36);
   }
-  return btoa(binary);
+  return prefix ? `${prefix}-${core}` : core;
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+  const CHUNK_SIZE = 8192;
+  const parts: string[] = [];
+  for (let i = 0; i < bytes.byteLength; i += CHUNK_SIZE) {
+    const chunk = bytes.subarray(i, Math.min(i + CHUNK_SIZE, bytes.byteLength));
+    parts.push(String.fromCharCode(...chunk));
+  }
+  return btoa(parts.join(''));
 }
 
 function base64ToBytes(base64: string): Uint8Array {
@@ -352,12 +368,27 @@ export async function registerVaultUser(
   user: User,
   password: string
 ): Promise<{ ok: boolean; error?: string }> {
+  const normalizedEmail = user.email.trim().toLowerCase();
+  if (!normalizedEmail) {
+    return { ok: false, error: 'Please provide a valid email address.' };
+  }
+  if (!password || password.length < 6) {
+    return {
+      ok: false,
+      error: 'Password must be at least 6 characters long.',
+    };
+  }
   const users = await getVaultUsers();
-  if (users[user.email]) {
+  if (users[normalizedEmail]) {
     return { ok: false, error: 'Account already exists. Sign in instead.' };
   }
+  const cleanUser: User = {
+    ...user,
+    email: normalizedEmail,
+    authProvider: 'email',
+  };
   const passwordHash = await hashPassword(password);
-  users[user.email] = { passwordHash, user };
+  users[normalizedEmail] = { passwordHash, user: cleanUser };
   await saveVaultUsers(users);
   return { ok: true };
 }
@@ -366,26 +397,33 @@ export async function authenticateVaultUser(
   email: string,
   password: string
 ): Promise<{ ok: boolean; user?: User; error?: string }> {
+  const normalizedEmail = email.trim().toLowerCase();
   const users = await getVaultUsers();
-  const record = users[email];
+  const record = users[normalizedEmail];
   if (!record) {
     return {
       ok: false,
       error: 'Account not found. Switch to Create Account or use Instant Demo.',
     };
   }
+  if (record.user.authProvider && record.user.authProvider !== 'email') {
+    return {
+      ok: false,
+      error: `This profile uses ${record.user.authProvider} quick-connect. Use that sign-in option instead.`,
+    };
+  }
   const valid = await verifyPassword(password, record);
   if (!valid) {
     return {
       ok: false,
-      error: 'Incorrect password. Try again or enable Quick Demo Mode.',
+      error: 'Incorrect password. Try again or create a separate demo profile.',
     };
   }
   // Automatically upgrade any legacy record to PBKDF2
   if (record.password && !record.passwordHash) {
     record.passwordHash = await hashPassword(password);
     delete record.password;
-    users[email] = record;
+    users[normalizedEmail] = record;
     await saveVaultUsers(users);
   }
   return { ok: true, user: record.user };
@@ -394,15 +432,29 @@ export async function authenticateVaultUser(
 export async function ensureFederatedOrDemoUser(
   user: User,
   secretToken = 'federated-vault-access'
-): Promise<User> {
+): Promise<{ ok: boolean; user?: User; error?: string }> {
+  const normalizedEmail = user.email.trim().toLowerCase();
   const users = await getVaultUsers();
-  if (users[user.email]?.user) {
-    return users[user.email].user;
+  const existing = users[normalizedEmail];
+  if (existing?.user) {
+    // Prevent passwordless or federated sign-in from bypassing password-protected accounts
+    if (
+      existing.user.authProvider === 'email' ||
+      existing.user.authProvider !== user.authProvider
+    ) {
+      return {
+        ok: false,
+        error:
+          'This email belongs to a password-protected account. Please sign in with your password.',
+      };
+    }
+    return { ok: true, user: existing.user };
   }
+  const cleanUser: User = { ...user, email: normalizedEmail };
   const passwordHash = await hashPassword(secretToken);
-  users[user.email] = { passwordHash, user };
+  users[normalizedEmail] = { passwordHash, user: cleanUser };
   await saveVaultUsers(users);
-  return user;
+  return { ok: true, user: cleanUser };
 }
 
 export function isVaultSessionInactive(

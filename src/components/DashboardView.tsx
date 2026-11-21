@@ -429,6 +429,17 @@ export function DashboardView({
               subtitle="Personalized performance insights"
             />
             <QuickActionBtn
+              onClick={() => onNavigate('horizon')}
+              icon={
+                <Sparkles
+                  size={18}
+                  className="text-fuchsia-700 dark:text-fuchsia-400"
+                />
+              }
+              title="Year 5026 Horizon Lab"
+              subtitle="3,000-yr app research & algorithm lab"
+            />
+            <QuickActionBtn
               onClick={() => onNavigate('learner')}
               icon={
                 <Brain
@@ -520,7 +531,7 @@ function QuickActionBtn({
     <button
       type="button"
       onClick={onClick}
-      className="flex items-center gap-3 p-3.5 rounded-xl border border-[#e4ddf5] dark:border-[#26193f] bg-white dark:bg-black hover:bg-[#f3effb] dark:hover:bg-[#120b1f] hover:border-violet-500/50 transition-all text-left cursor-pointer"
+      className="kinetic-card flex items-center gap-3 p-3.5 rounded-xl border border-[#e4ddf5] dark:border-[#26193f] bg-white dark:bg-black hover:bg-[#f3effb] dark:hover:bg-[#120b1f] transition-all text-left cursor-pointer"
     >
       <div className="p-2 rounded-lg bg-[#faf8ff] dark:bg-[#120b1f] border border-[#e4ddf5] dark:border-[#26193f] shrink-0">
         {icon}
