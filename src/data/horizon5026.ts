@@ -243,3 +243,46 @@ export const FRONTIER_5026_TRACKS: FrontierTrack[] = [
       'Architect autonomous AI workflows that synthesize adaptive applications safely while keeping humans in sovereign control.',
   },
 ];
+
+export const CURRENT_2026_TRACKS: FrontierTrack[] = [
+  {
+    id: 'current-consensus',
+    title: 'Multi-Region Quorum, Sharding & Distributed Locks',
+    company: 'OpenAI',
+    role: 'Staff Backend Engineer',
+    type: 'System Design',
+    experience: 10,
+    difficulty: 'Hard',
+    focusTopics:
+      'Year 2026 production architecture: Raft quorum leases, hybrid logical clocks, partition recovery, and idempotent distributed pipelines',
+    summary:
+      'Design a globally replicated inference & stateful workflow backbone balancing p99 latency, failover, and strict consistency.',
+  },
+  {
+    id: 'current-algorithms',
+    title: 'Lock-Free Concurrency, HNSW Indexing & Latency Budgets',
+    company: 'Google',
+    role: 'Senior Software Engineer',
+    type: 'Technical',
+    experience: 7,
+    difficulty: 'Hard',
+    focusTopics:
+      'Year 2026 optimal algorithms: HNSW vector indexing, wait-free ring buffers, bounded rate limiters, and O(N log N) stream aggregation',
+    summary:
+      'Refactor quadratic bottlenecks into sub-linear retrieval structures and lock-free concurrent pipelines under burst load.',
+  },
+  {
+    id: 'current-ephemeral-ui',
+    title: 'Accessible Reactive UI, Safety Guardrails & AI UX',
+    company: 'Anthropic',
+    role: 'Senior Frontend Engineer',
+    type: 'Behavioural',
+    experience: 6,
+    difficulty: 'Medium',
+    focusTopics:
+      'Year 2026 production craft: Streaming AI interfaces, WCAG AA accessibility compliance, Web Crypto client vaults, and human-in-the-loop safety',
+    summary:
+      'Navigate high-stakes product trade-offs around deterministic trust boundaries, streaming latency, and inclusive accessibility.',
+  },
+];
+
