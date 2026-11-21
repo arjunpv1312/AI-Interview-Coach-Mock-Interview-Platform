@@ -3,9 +3,26 @@ import { InterviewConfig } from '../types';
 export interface PrewarmedTurnResult {
   text?: string;
   error?: boolean;
+  quotaExceeded?: boolean;
+  difficultyTier?: number;
+  baseTier?: number;
+  tierLabel?: string;
+  tierShift?: 'up' | 'down' | 'steady';
+  adaptiveDelta?: number;
 }
 
 const prewarmCache = new Map<string, Promise<PrewarmedTurnResult | null>>();
+const QUOTA_COOLDOWN_MS = 60_000;
+let quotaCooldownUntil = 0;
+
+export function markQuotaCooldown(durationMs = QUOTA_COOLDOWN_MS): void {
+  quotaCooldownUntil = Math.max(quotaCooldownUntil, Date.now() + durationMs);
+  prewarmCache.clear();
+}
+
+export function isQuotaCooldownActive(): boolean {
+  return Date.now() < quotaCooldownUntil;
+}
 
 export function getConfigPrewarmSignature(config: InterviewConfig): string {
   return JSON.stringify({
@@ -24,7 +41,7 @@ export function getConfigPrewarmSignature(config: InterviewConfig): string {
 export function prewarmOpeningTurn(
   config: InterviewConfig
 ): Promise<PrewarmedTurnResult | null> {
-  if (!config.company || !config.role) {
+  if (!config.company || !config.role || isQuotaCooldownActive()) {
     return Promise.resolve(null);
   }
   const signature = getConfigPrewarmSignature(config);
@@ -62,12 +79,20 @@ export function prewarmOpeningTurn(
     .then(async (res) => {
       clearTimeout(timeoutId);
       const raw = await res.text();
-      const parsed = JSON.parse(raw);
+      const parsed = JSON.parse(raw) as PrewarmedTurnResult;
+      if (
+        res.status === 429 ||
+        parsed?.quotaExceeded ||
+        parsed?.text?.includes('high load')
+      ) {
+        markQuotaCooldown();
+        return null;
+      }
       if (parsed?.error || !parsed?.text) {
         prewarmCache.delete(signature);
         return null;
       }
-      return parsed as PrewarmedTurnResult;
+      return parsed;
     })
     .catch(() => {
       clearTimeout(timeoutId);
@@ -82,28 +107,13 @@ export function prewarmOpeningTurn(
 export function consumePrewarmedOpeningTurn(
   config: InterviewConfig
 ): Promise<PrewarmedTurnResult | null> | null {
+  if (isQuotaCooldownActive()) {
+    return null;
+  }
   const signature = getConfigPrewarmSignature(config);
   const cached = prewarmCache.get(signature) || null;
   if (cached) {
     prewarmCache.delete(signature);
   }
   return cached;
-}
-
-let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-
-export function schedulePrewarm(
-  config: InterviewConfig,
-  delayMs = 800
-): () => void {
-  if (debounceTimer) clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(() => {
-    void prewarmOpeningTurn(config);
-  }, delayMs);
-  return () => {
-    if (debounceTimer) {
-      clearTimeout(debounceTimer);
-      debounceTimer = null;
-    }
-  };
 }

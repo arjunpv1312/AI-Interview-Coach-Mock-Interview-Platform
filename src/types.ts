@@ -147,6 +147,9 @@ export interface InterviewSession {
   type: string;
   difficulty: string;
   experience?: number;
+  baseTier?: number;
+  finalTier?: number;
+  peakTier?: number;
   startTime: string;
   history: ChatMessage[];
   resumeProfile?: ResumeProfile | null;

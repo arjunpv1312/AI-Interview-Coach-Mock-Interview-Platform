@@ -7,6 +7,13 @@ import {
 
 export type DifficultyTierNumber = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 
+export type TierShiftDirection = 'up' | 'down' | 'steady';
+
+export interface OrchestratorHistoryMessage {
+  role: string;
+  text: string;
+}
+
 export interface OrchestratorInput {
   company: string;
   role: string;
@@ -19,6 +26,8 @@ export interface OrchestratorInput {
   startWithResume?: boolean;
   turnNumber?: number;
   resumeSummaryBlock?: string;
+  history?: OrchestratorHistoryMessage[];
+  overrideTier?: number;
 }
 
 export interface TierDescriptor {
@@ -33,6 +42,10 @@ export interface TierDescriptor {
 
 export interface OrchestratedDifficultyPlan {
   tier: DifficultyTierNumber;
+  baseTier: DifficultyTierNumber;
+  adaptiveDelta: number;
+  tierShift: TierShiftDirection;
+  adaptiveReason: string;
   tierLabel: string;
   descriptor: TierDescriptor;
   playbook: CompanyPlaybook;
@@ -336,13 +349,107 @@ export class DifficultyOrchestrator {
     };
   }
 
+  private static readonly RIGOR_SIGNAL_RE =
+    /\b(trade-?off|latency|p99|p95|throughput|complexity|o\(|sharding|shard|replication|replica|idempotent|idempotency|consensus|raft|paxos|quorum|backpressure|race condition|deadlock|mutex|cache|eviction|index|partition|consistent hashing|sla|slo|observability|telemetry|circuit breaker|rate limit|cap theorem|failover|star|quantified|bottleneck|cap|zero-downtime)\b/gi;
+
+  private static readonly HINT_OR_STRUGGLE_RE =
+    /\b(unsure|not sure|don't know|do not know|no idea|hint|reframe|stuck|confused|blanking|pass on this)\b/i;
+
+  public static computeAdaptiveTierStep(
+    history: OrchestratorHistoryMessage[] | undefined,
+    baseTier: DifficultyTierNumber,
+    experienceYears: number,
+    userDifficulty?: string
+  ): {
+    effectiveTier: DifficultyTierNumber;
+    adaptiveDelta: number;
+    tierShift: TierShiftDirection;
+    adaptiveReason: string;
+  } {
+    const candidateTurns = (history || []).filter(
+      (msg) => msg && msg.role === 'candidate' && typeof msg.text === 'string' && msg.text.trim().length > 0
+    );
+
+    if (candidateTurns.length === 0) {
+      return {
+        effectiveTier: baseTier,
+        adaptiveDelta: 0,
+        tierShift: 'steady',
+        adaptiveReason: 'Opening calibration matched to profile.',
+      };
+    }
+
+    let netSignal = 0;
+    let hintRequests = 0;
+    let strongTurns = 0;
+
+    for (const turn of candidateTurns) {
+      const text = turn.text.trim();
+      const words = text.split(/\s+/).filter(Boolean).length;
+      const rigorMatches = text.match(this.RIGOR_SIGNAL_RE)?.length || 0;
+      const hasMetrics = /\b\d+(?:\.\d+)?\s*(%|ms|s|x|qps|rps|kb|mb|gb|tb|users|req)\b/i.test(text);
+      const askedHint = this.HINT_OR_STRUGGLE_RE.test(text);
+
+      if (askedHint || words < 10) {
+        netSignal -= 1;
+        if (askedHint) hintRequests++;
+      } else if (words >= 42 && (rigorMatches >= 2 || hasMetrics)) {
+        netSignal += 2;
+        strongTurns++;
+      } else if (words >= 24 && (rigorMatches >= 1 || hasMetrics)) {
+        netSignal += 1;
+        strongTurns++;
+      }
+    }
+
+    let desiredDelta = 0;
+    if (netSignal >= 3) desiredDelta = 2;
+    else if (netSignal >= 1) desiredDelta = 1;
+    else if (netSignal <= -1) desiredDelta = -1;
+
+    const yrs = Math.max(0, Math.min(35, Number(experienceYears) || 0));
+    let minAllowed = Math.max(1, baseTier - 1);
+    let maxAllowed = Math.min(10, baseTier + 2);
+
+    // Beginner guardrail: even when a fresher performs strongly on Easy,
+    // keep adaptive ceiling gentle (max Tier 3) rather than jumping to distributed architecture.
+    if (yrs <= 1 && userDifficulty === 'Easy') {
+      maxAllowed = Math.min(maxAllowed, 3);
+    }
+
+    const effectiveTier = Math.max(
+      minAllowed,
+      Math.min(maxAllowed, baseTier + desiredDelta)
+    ) as DifficultyTierNumber;
+    const actualDelta = effectiveTier - baseTier;
+    const tierShift: TierShiftDirection =
+      actualDelta > 0 ? 'up' : actualDelta < 0 ? 'down' : 'steady';
+
+    let adaptiveReason = 'Steady progression aligned with session calibration.';
+    if (tierShift === 'up') {
+      adaptiveReason = `Escalated +${actualDelta} tier (${strongTurns} high-rigor response${strongTurns === 1 ? '' : 's'} with concrete trade-offs or metrics).`;
+    } else if (tierShift === 'down') {
+      adaptiveReason =
+        hintRequests > 0
+          ? 'Stepped down 1 tier for supportive scaffolding after hint/clarification request.'
+          : 'Stepped down 1 tier to reinforce core concepts after brief responses.';
+    }
+
+    return {
+      effectiveTier,
+      adaptiveDelta: actualDelta,
+      tierShift,
+      adaptiveReason,
+    };
+  }
+
   public static orchestrate(input: OrchestratorInput): OrchestratedDifficultyPlan {
     const playbook = getCompanyPlaybook(input.company);
     const calibration = getLevelCalibration(
       input.experienceYears,
       input.userDifficulty || 'Medium'
     );
-    const { tier, companyBarOffset, roleWeightOffset } = this.resolveTierNumber({
+    const { tier: baseTier, companyBarOffset, roleWeightOffset } = this.resolveTierNumber({
       company: input.company,
       role: input.role,
       experienceYears: input.experienceYears,
@@ -350,6 +457,28 @@ export class DifficultyOrchestrator {
       strictMode: input.strictMode,
     });
 
+    const adaptive =
+      typeof input.overrideTier === 'number' && input.overrideTier >= 1 && input.overrideTier <= 10
+        ? {
+            effectiveTier: Math.round(input.overrideTier) as DifficultyTierNumber,
+            adaptiveDelta: Math.round(input.overrideTier) - baseTier,
+            tierShift: (
+              Math.round(input.overrideTier) > baseTier
+                ? 'up'
+                : Math.round(input.overrideTier) < baseTier
+                  ? 'down'
+                  : 'steady'
+            ) as TierShiftDirection,
+            adaptiveReason: 'Locked to final session tier reached.',
+          }
+        : this.computeAdaptiveTierStep(
+            input.history,
+            baseTier,
+            input.experienceYears,
+            input.userDifficulty
+          );
+
+    const tier = adaptive.effectiveTier;
     const descriptor = TIER_CATALOG[tier];
     const tierLabel = `Tier ${tier}/10 · ${descriptor.label}`;
     const roundType = input.roundType || 'Technical';
@@ -365,6 +494,13 @@ export class DifficultyOrchestrator {
     const strictDirective = input.strictMode
       ? 'PRINCIPAL BAR-RAISER TOGGLE ACTIVE: Do not praise superficial answers. Challenge vague buzzwords immediately and demand concrete trade-offs, failure modes, or quantified impact.'
       : `Maintain ${playbook.company}'s authentic interviewer demeanor (${playbook.pacingProfile}).`;
+
+    const adaptiveDirective =
+      adaptive.tierShift === 'up'
+        ? `ADAPTIVE ESCALATION (+${adaptive.adaptiveDelta} FROM BASE TIER ${baseTier} -> TIER ${tier}): ${adaptive.adaptiveReason} Deepen your follow-up cleanly into Tier ${tier}/10 rigor.`
+        : adaptive.tierShift === 'down'
+          ? `ADAPTIVE SCAFFOLDING (-1 FROM BASE TIER ${baseTier} -> TIER ${tier}): ${adaptive.adaptiveReason} Decompose the problem calmly at Tier ${tier}/10 without patronizing.`
+          : `ACTIVE BAR: Steady at Tier ${tier}/10.`;
 
     const resumeDirective = input.hasResume
       ? input.startWithResume !== false && turnNumber <= 2
@@ -383,6 +519,7 @@ COMPANY INTERVIEW PLAYBOOK (${playbook.company} — ${playbook.archetype}):
 
 ORCHESTRATED DIFFICULTY TIER ${tier}/10 (${descriptor.label}):
 - Core Directive: ${descriptor.systemInstructionDirective}
+- ${adaptiveDirective}
 - Career Scope: ${calibration.questionScope}
 - Level Prompt Calibration: ${calibration.promptDirective}
 - Pacing Rule: ${calibration.pacingDirective}
@@ -427,6 +564,10 @@ Produce strict, fair scores (0–100), crackProbability, per-question reviews, a
 
     return {
       tier,
+      baseTier,
+      adaptiveDelta: adaptive.adaptiveDelta,
+      tierShift: adaptive.tierShift,
+      adaptiveReason: adaptive.adaptiveReason,
       tierLabel,
       descriptor,
       playbook,

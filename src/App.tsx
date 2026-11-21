@@ -327,7 +327,10 @@ export default function App() {
     setView('live');
   };
 
-  const handleCompleteInterview = (history: any[]) => {
+  const handleCompleteInterview = (
+    history: any[],
+    tierMeta?: { baseTier: number; finalTier: number; peakTier: number }
+  ) => {
     if (!sessionParams) return;
     const session: InterviewSession = {
       id: Math.random().toString(36).slice(2, 11),
@@ -337,6 +340,9 @@ export default function App() {
       type: sessionParams.type,
       difficulty: sessionParams.difficulty,
       experience: sessionParams.experience,
+      baseTier: tierMeta?.baseTier,
+      finalTier: tierMeta?.finalTier,
+      peakTier: tierMeta?.peakTier,
       startTime: new Date().toISOString(),
       history,
       resumeProfile: sessionParams.resumeProfile || null,

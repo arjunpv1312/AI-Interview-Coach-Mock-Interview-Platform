@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { COMPANIES, ROLES } from '../data';
 import { InterviewConfig, ResumeProfile } from '../types';
 import {
@@ -6,7 +6,7 @@ import {
   getLevelCalibration,
 } from '../lib/interviewPlaybooks';
 import { DifficultyOrchestrator } from '../lib/DifficultyOrchestrator';
-import { prewarmOpeningTurn, schedulePrewarm } from '../lib/interviewPrewarm';
+import { prewarmOpeningTurn } from '../lib/interviewPrewarm';
 import {
   Building2,
   Briefcase,
@@ -63,11 +63,6 @@ export function SetupView({
     Boolean(config.role) &&
     Boolean(config.type) &&
     Boolean(config.difficulty);
-
-  useEffect(() => {
-    if (!isFormValid || parsing) return;
-    return schedulePrewarm(config, 750);
-  }, [config, isFormValid, parsing]);
 
   const playbook = getCompanyPlaybook(config.company);
   const calibration = getLevelCalibration(config.experience, config.difficulty);

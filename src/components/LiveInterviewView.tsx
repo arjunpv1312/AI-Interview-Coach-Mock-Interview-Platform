@@ -5,8 +5,14 @@ import {
   getCompanyPlaybook,
   getLevelCalibration,
 } from '../lib/interviewPlaybooks';
-import { DifficultyOrchestrator } from '../lib/DifficultyOrchestrator';
-import { consumePrewarmedOpeningTurn } from '../lib/interviewPrewarm';
+import {
+  DifficultyOrchestrator,
+  TierShiftDirection,
+} from '../lib/DifficultyOrchestrator';
+import {
+  consumePrewarmedOpeningTurn,
+  markQuotaCooldown,
+} from '../lib/interviewPrewarm';
 import {
   Clock,
   Video,
@@ -35,7 +41,10 @@ import femaleInterviewerImg from '../assets/images/interviewer_female_1794822328
 
 interface LiveInterviewViewProps {
   config: InterviewConfig;
-  onComplete: (history: ChatMessage[]) => void;
+  onComplete: (
+    history: ChatMessage[],
+    tierMeta?: { baseTier: number; finalTier: number; peakTier: number }
+  ) => void;
   onCancel: () => void;
 }
 
@@ -47,6 +56,19 @@ export function LiveInterviewView({
   const playbook = getCompanyPlaybook(config.company);
   const calibration = getLevelCalibration(config.experience, config.difficulty);
   const silencePatienceMs = calibration.silencePatienceMs;
+  const initialPlan = DifficultyOrchestrator.orchestrate({
+    company: config.company,
+    role: config.role,
+    experienceYears: config.experience,
+    roundType: config.type,
+    userDifficulty: config.difficulty,
+    strictMode: Boolean(config.strictMode),
+  });
+
+  const [baseTier] = useState<number>(initialPlan.baseTier);
+  const [activeTier, setActiveTier] = useState<number>(initialPlan.tier);
+  const [peakTier, setPeakTier] = useState<number>(initialPlan.tier);
+  const [tierShift, setTierShift] = useState<TierShiftDirection>('steady');
 
   const [history, setHistory] = useState<ChatMessage[]>([]);
   const [timeLeft, setTimeLeft] = useState(
@@ -450,7 +472,12 @@ export function LiveInterviewView({
         clearTimeout(timer);
         const textResponse = await res.text();
         try {
-          return JSON.parse(textResponse);
+          const parsed = JSON.parse(textResponse);
+          if (res.status === 429 || parsed?.quotaExceeded) {
+            markQuotaCooldown();
+            return parsed;
+          }
+          return parsed;
         } catch {
           return {
             error: true,
@@ -468,11 +495,41 @@ export function LiveInterviewView({
     throw lastErr || new Error('Connection timed out');
   };
 
+  const syncAdaptiveTierFromResponse = (
+    data: {
+      difficultyTier?: number;
+      tierShift?: TierShiftDirection;
+    },
+    currentHistory: ChatMessage[]
+  ) => {
+    const localPlan = DifficultyOrchestrator.orchestrate({
+      company: config.company,
+      role: config.role,
+      experienceYears: config.experience,
+      roundType: config.type,
+      userDifficulty: config.difficulty,
+      strictMode,
+      history: currentHistory,
+    });
+    const resolvedTier =
+      typeof data.difficultyTier === 'number'
+        ? data.difficultyTier
+        : localPlan.tier;
+    setActiveTier(resolvedTier);
+    setPeakTier((prev) => Math.max(prev, resolvedTier));
+    setTierShift(data.tierShift || localPlan.tierShift);
+  };
+
   // Initial greeting and resume-grounded opening question (instant when pre-warmed)
   const hasFetchedInitialRef = useRef(false);
   useEffect(() => {
     let mounted = true;
-    const applyOpeningData = (data: { text?: string; error?: boolean }) => {
+    const applyOpeningData = (data: {
+      text?: string;
+      error?: boolean;
+      difficultyTier?: number;
+      tierShift?: TierShiftDirection;
+    }) => {
       if (!mounted) return;
       if (
         data.error ||
@@ -483,6 +540,7 @@ export function LiveInterviewView({
         setErrorToast(data.text || 'API connection failed. Retrying...');
         setTimeout(() => setErrorToast(''), 5000);
       } else {
+        syncAdaptiveTierFromResponse(data, []);
         const aiMessage = {
           role: 'interviewer' as const,
           text:
@@ -704,10 +762,10 @@ export function LiveInterviewView({
     if (timeLeft > 0) {
       timer = setInterval(() => setTimeLeft((prev) => prev - 1), 1000);
     } else if (timeLeft === 0 && !isThinking) {
-      onComplete(history);
+      onComplete(history, { baseTier, finalTier: activeTier, peakTier });
     }
     return () => clearInterval(timer);
-  }, [timeLeft, isThinking, history, onComplete]);
+  }, [timeLeft, isThinking, history, onComplete, baseTier, activeTier, peakTier]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -755,6 +813,7 @@ export function LiveInterviewView({
         );
         setTimeout(() => setErrorToast(''), 5000);
       } else {
+        syncAdaptiveTierFromResponse(data, newHistory);
         const aiMessage = {
           role: 'interviewer' as const,
           text: data.text || 'Could you elaborate a bit further on that?',
@@ -825,18 +884,12 @@ export function LiveInterviewView({
               </span>
               <span aria-hidden="true">·</span>
               <span className="font-mono tabular-nums text-violet-700 dark:text-violet-300 font-medium">
-                Tier{' '}
-                {
-                  DifficultyOrchestrator.orchestrate({
-                    company: config.company,
-                    role: config.role,
-                    experienceYears: config.experience,
-                    roundType: config.type,
-                    userDifficulty: config.difficulty,
-                    strictMode,
-                  }).tier
-                }
-                /10
+                Tier {activeTier}/10
+                {tierShift === 'up'
+                  ? ' · Stepped Up'
+                  : tierShift === 'down'
+                    ? ' · Guided'
+                    : ''}
               </span>
               <span aria-hidden="true">·</span>
               <span>{config.difficulty}</span>
@@ -888,7 +941,11 @@ export function LiveInterviewView({
               type="button"
               onClick={() => {
                 stopSpeech();
-                onComplete(history);
+                onComplete(history, {
+                  baseTier,
+                  finalTier: activeTier,
+                  peakTier,
+                });
               }}
               className="amoled-btn-primary text-white px-5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap"
             >
@@ -1348,7 +1405,7 @@ export function LiveInterviewView({
               </label>
               <span className="text-xs font-mono text-[#5a5170] dark:text-[#a69cbe] tabular-nums">
                 {autoSubmitEnabled
-                  ? 'Auto-send after 5s silence · Ctrl+Enter'
+                  ? `Auto-send after ${Math.round(silencePatienceMs / 1000)}s silence · Ctrl+Enter`
                   : 'Manual mode · Ctrl+Enter to send'}
               </span>
             </div>

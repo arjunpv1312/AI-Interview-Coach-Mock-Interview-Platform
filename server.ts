@@ -146,6 +146,13 @@ async function generateContentWithRetry(options: any, timeoutMs = 20000) {
         errString.includes('Too Many Requests') ||
         errString.includes('503')
       ) {
+        // When only one key is configured and quota is exhausted, fail fast instead of burning retries
+        if (
+          apiManager.getKeysLength() <= 1 &&
+          (errString.includes('Quota') || errString.includes('ResourceExhausted'))
+        ) {
+          throw error;
+        }
         apiManager.nextKey();
         await new Promise((r) => setTimeout(r, 800));
       } else {
@@ -539,6 +546,7 @@ Generate 4 specific "tailoredAngles" representing sharp, realistic interview que
         startWithResume: startWithResume !== false,
         turnNumber,
         resumeSummaryBlock: resumeBlock,
+        history: Array.isArray(history) ? history : [],
       });
 
       let conversationContents = 'Conversation transcript:\n';
@@ -573,20 +581,27 @@ Generate 4 specific "tailoredAngles" representing sharp, realistic interview que
         throw new Error('Empty response from AI');
       }
 
+      res.setHeader('X-Base-Tier', String(plan.baseTier));
       res.setHeader('X-Difficulty-Tier', String(plan.tier));
+      res.setHeader('X-Difficulty-Shift', plan.tierShift);
       res.setHeader(
         'Server-Timing',
         `ai;dur=${Date.now() - startedAt};desc="${response._modelUsed || 'gemini'}-try${(response._attemptIndex ?? 0) + 1}"`
       );
       res.json({
         text: response.text.trim(),
+        baseTier: plan.baseTier,
         difficultyTier: plan.tier,
+        adaptiveDelta: plan.adaptiveDelta,
+        tierShift: plan.tierShift,
+        adaptiveReason: plan.adaptiveReason,
         tierLabel: plan.tierLabel,
       });
     } catch (error: any) {
       console.warn('Error getting interaction:', error?.message || 'Error');
       let fallbackText =
         "I'm having a technical issue processing that. Could you please repeat or rephrase your answer?";
+      let quotaExceeded = false;
 
       const errString =
         String(error) +
@@ -598,6 +613,7 @@ Generate 4 specific "tailoredAngles" representing sharp, realistic interview que
         errString.includes('ResourceExhausted')
       ) {
         apiManager.nextKey();
+        quotaExceeded = true;
         fallbackText =
           'Our AI system is handling high load right now. Please wait a moment and submit your response again.';
       } else if (
@@ -608,7 +624,11 @@ Generate 4 specific "tailoredAngles" representing sharp, realistic interview que
           'There is an issue with the Gemini API Key. Please check your configuration.';
       }
 
-      res.json({ error: true, text: fallbackText });
+      res.status(quotaExceeded ? 429 : 200).json({
+        error: true,
+        quotaExceeded,
+        text: fallbackText,
+      });
     }
   });
 
@@ -696,6 +716,8 @@ Return ONLY a JSON array of 5 strings.`;
         type = 'Technical',
         difficulty = 'Medium',
         experience = 3,
+        finalTier,
+        peakTier,
         resumeProfile,
         history = [],
       } = req.body;
@@ -729,6 +751,13 @@ Return ONLY a JSON array of 5 strings.`;
         experienceYears: Number(experience) || 0,
         roundType: type,
         userDifficulty: difficulty,
+        history: Array.isArray(history) ? history : [],
+        overrideTier:
+          typeof peakTier === 'number'
+            ? peakTier
+            : typeof finalTier === 'number'
+              ? finalTier
+              : undefined,
       });
       const resumeBlock = formatResumeContext(resumeProfile);
 

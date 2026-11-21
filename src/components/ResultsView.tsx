@@ -238,6 +238,8 @@ export function ResultsView({
               type: session.type,
               difficulty: session.difficulty,
               experience: session.experience ?? 3,
+              finalTier: session.finalTier,
+              peakTier: session.peakTier,
               resumeProfile: session.resumeProfile || null,
               history: session.history,
             }),
@@ -397,17 +399,21 @@ export function ResultsView({
               )}
               <span aria-hidden="true">·</span>
               <span className="font-mono tabular-nums text-violet-700 dark:text-violet-300 font-medium">
-                Tier{' '}
-                {
-                  DifficultyOrchestrator.orchestrate({
-                    company: session.company,
-                    role: session.role,
-                    experienceYears: session.experience ?? 3,
-                    roundType: session.type,
-                    userDifficulty: session.difficulty,
-                  }).tier
-                }
-                /10
+                {(() => {
+                  const base =
+                    session.baseTier ??
+                    DifficultyOrchestrator.orchestrate({
+                      company: session.company,
+                      role: session.role,
+                      experienceYears: session.experience ?? 3,
+                      roundType: session.type,
+                      userDifficulty: session.difficulty,
+                    }).baseTier;
+                  const peak = session.peakTier ?? session.finalTier ?? base;
+                  return peak !== base
+                    ? `Tier ${base}→${peak}/10`
+                    : `Tier ${peak}/10`;
+                })()}
               </span>
               <span aria-hidden="true">·</span>
               <span>{session.difficulty}</span>
